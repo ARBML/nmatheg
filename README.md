@@ -51,4 +51,4 @@ We are supporting huggingface datasets for Arabic. You can find the supported da
 - Classification Models 
 
 ## Demo 
-Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/demo.ipynb) for a quick demo. 
+Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/blob/main/demo.ipynb) for a quick demo. 
