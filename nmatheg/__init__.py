@@ -1,1 +1,1 @@
-from nmatheg import nmatheg
+from nmatheg.nmatheg import TrainStrategy

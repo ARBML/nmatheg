@@ -38,8 +38,8 @@ batch_size = 256
 
 ## Usage 
 ```python
-import nmatheg
-strategy = nmatheg('config.ini')
+import nmatheg as nm
+strategy = nm.TrainStrategy('config.ini')
 strategy.start()
 ```
 
