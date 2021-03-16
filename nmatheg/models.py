@@ -125,7 +125,7 @@ class ClassificationModel():
         self.checkpoint.restore(self.ckpt_manager.latest_checkpoint)
         _, test_score = self.evaluate_test(test_dataset)
 
-        print('results on test score is:',test_score)
+        print('test score is:',test_score)
 
     def evaluate_test(self, test_dataset):
         self.test_loss.reset_states()
