@@ -2,7 +2,9 @@
 
 Nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingface datasets. Just specifiy the name of the dataset, preprocessing, tokenization and the training procedure in the config file to train an nlp model for that task. 
 
-## Sample Config File 
+## Configuration
+
+Setup a config file for the training strategy. 
 
 ``` ini
 [dataset]
@@ -47,3 +49,6 @@ We are supporting huggingface datasets for Arabic. You can find the supported da
 ## Models 
 
 - Classification Models 
+
+## Demo 
+Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/demo.ipynb) for a quick demo. 
