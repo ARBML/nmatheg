@@ -14,7 +14,7 @@ from .models import ClassificationModel
 from .utils import get_tokenizer
 import configparser
 
-class nmatheg:
+class Strategy:
   def __init__(self, config_path):
 
     config = configparser.ConfigParser()

@@ -39,7 +39,7 @@ batch_size = 256
 ## Usage 
 ```python
 import nmatheg
-strategy = nmatehg('config.ini')
+strategy = nmatheg('config.ini')
 strategy.start()
 ```
 
