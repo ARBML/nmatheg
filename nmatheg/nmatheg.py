@@ -11,7 +11,7 @@ import logging
 import sys
 from dataset import tokenize_data, create_dataset
 from models import ClassificationModel
-from helpers import get_tokenizer
+from utils import get_tokenizer
 import configparser
 
 class nmatheg:
