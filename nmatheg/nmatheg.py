@@ -19,9 +19,11 @@ class Strategy:
 
     config = configparser.ConfigParser()
     config.read(config_path)
-    print(config)
+
     data_config = configparser.ConfigParser()
-    data_config.read('.datasets.ini')
+    rel_path = os.path.dirname(__file__)
+    data_ini_path = os.path.join(rel_path, "datasets.ini")
+    data_config.read(data_ini_path)
 
     max_tokens = int(config['tokenization']['max_tokens'])
     tokenizer_name = config['tokenization']['tokenizer_name']
