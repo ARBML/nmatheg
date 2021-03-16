@@ -3,7 +3,7 @@ import tensorflow as tf
 import tnkeeh as tn 
 from datasets import load_dataset
 import os 
-from utils import *
+from utils import get_preprocessing_args
 
 def write_split(dataset, config, data_config, split = 'train'):
     data = []
