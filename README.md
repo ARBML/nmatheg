@@ -18,7 +18,7 @@ Setup a config file for the training strategy.
 
 ``` ini
 [dataset]
-dataset_name = ajgt_twitter_ar
+dataset_name = metrec
 task = classification 
 
 [preprocessing]
