@@ -44,7 +44,7 @@ strategy.start()
 ```
 
 ## Datasets 
-We are supporting huggingface datasets for Arabic. You can find the supported datasets [here](nmatehg/datasets.ini). 
+We are supporting huggingface datasets for Arabic. You can find the supported datasets [here](https://github.com/ARBML/nmatheg/blob/main/nmatheg/datasets.ini). 
 
 ## Models 
 
