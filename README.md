@@ -1,3 +1,8 @@
+
+ <p align="center"> 
+ <img src = "https://raw.githubusercontent.com/ARBML/nmatheg/master/nmatheg_logo.PNG" width = "200px"/>
+ </p>
+
 # nmatheg
 
 Nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingface datasets. Just specifiy the name of the dataset, preprocessing, tokenization and the training procedure in the config file to train an nlp model for that task. 
