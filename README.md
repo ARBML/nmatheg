@@ -3,9 +3,14 @@
  <img src = "https://raw.githubusercontent.com/ARBML/nmatheg/master/nmatheg_logo.PNG" width = "200px"/>
  </p>
 
+
 # nmatheg
 
 Nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingface datasets. Just specifiy the name of the dataset, preprocessing, tokenization and the training procedure in the config file to train an nlp model for that task. 
+
+## install 
+
+```pip install nmatheg```
 
 ## Configuration
 
@@ -51,9 +56,9 @@ strategy.start()
 ## Datasets 
 We are supporting huggingface datasets for Arabic. You can find the supported datasets [here](https://github.com/ARBML/nmatheg/blob/main/nmatheg/datasets.ini). 
 
-## Models 
+## Tasks 
 
-- Classification Models 
+Currently only supporting classification tasks using bidirectional GRUs. We are aplanning to support more complicated mechanisms like BERT fine-tuning. 
 
 ## Demo 
 Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/blob/main/demo.ipynb) for a quick demo. 
