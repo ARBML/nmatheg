@@ -6,7 +6,7 @@
 
 # nmatheg
 
-Nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingface datasets. Just specifiy the name of the dataset, preprocessing, tokenization and the training procedure in the config file to train an nlp model for that task. 
+nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingface datasets. Just specifiy the name of the dataset, preprocessing, tokenization and the training procedure in the config file to train an nlp model for that task. 
 
 ## install 
 
@@ -45,6 +45,13 @@ dir = .
 epochs = 10
 batch_size = 256
 ```
+
+### Main Sections 
+
+- `dataset` describe the dataset and the task type. Currently we only support classification 
+- `preprocessing` a set of cleaning functions mainly uses our library [tnkeeh](https://github.com/ARBML/tnkeeh). 
+- `tokenization` descrbies the tokenizer used for encoding the dataset. It uses our library [tkseem](https://github.com/ARBML/tkseem). 
+- `train` the training parameters like number of epochs and batch size. 
 
 ## Usage 
 ```python
