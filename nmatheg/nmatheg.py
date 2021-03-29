@@ -1,16 +1,7 @@
 
 import os 
-import tensorflow_datasets as tfds
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import GRU, Embedding, Dense, Input, Dropout, Bidirectional
-import numpy as np
-import matplotlib.pyplot as plt
-import logging 
-import sys
-from .dataset import tokenize_data, create_dataset, create_dataset_bert
-from .models import ClassificationModel, BERTClassificationModel
+from .dataset import create_dataset_simple, create_dataset_bert
+from .models import SimpleClassificationModel, BERTClassificationModel
 from .utils import get_tokenizer
 import configparser
 
@@ -25,30 +16,25 @@ class TrainStrategy:
     data_ini_path = os.path.join(rel_path, "datasets.ini")
     data_config.read(data_ini_path)
 
-    max_tokens = int(config['tokenization']['max_tokens'])
-    tokenizer_name = config['tokenization']['tokenizer_name']
-    tokenizer = get_tokenizer(tokenizer_name)
     vocab_size = int(config['tokenization']['vocab_size'])
 
     dataset_name = config['dataset']['dataset_name']
-    num_classes = int(data_config[dataset_name]['num_classes'])
+    num_labels = int(data_config[dataset_name]['num_labels'])
 
     batch_size = int(config['train']['batch_size'])
-    train_dir = config['train']['dir']
     self.epochs = int(config['train']['epochs'])
     model_name =  config['model']['model_name']
 
     self.print_every = int(config['log']['print_every'])
 
     if 'bert' in model_name:
-      self.datasets = create_dataset_bert(dataset_name, config, data_config, batch_size = batch_size)
-      self.model = BERTClassificationModel(model_name, num_classes)
+      self.datasets = create_dataset_bert(dataset_name, config, 
+      data_config, batch_size = batch_size)
+      self.model = BERTClassificationModel(model_name, num_labels)
     else:
-      data = tokenize_data(dataset_name, config, data_config, tokenizer, 
-      vocab_size = vocab_size, max_tokens=max_tokens)
-      self.datasets = create_dataset(data, batch_size = batch_size)
-      ckpt_dir = f'{train_dir}/ckpts/vocab_size_{vocab_size}/{tokenizer_name}/'
-      self.model = ClassificationModel(vocab_size, num_classes, ckpt_dir)
+      self.datasets = create_dataset_simple(dataset_name, config, 
+      data_config, batch_size = batch_size)
+      self.model = SimpleClassificationModel(vocab_size, num_labels)
 
   def start(self):
     self.model.train(self.datasets, epochs = self.epochs,

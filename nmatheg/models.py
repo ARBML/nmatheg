@@ -9,12 +9,13 @@ from tqdm import tqdm
 import torch
 from torch.optim import AdamW
 from sklearn.metrics import accuracy_score
+import torch.nn as nn
 
 class ClassificationModel():
-    def __init__(self, vocab_size, num_classes, ckpt_dir):
+    def __init__(self, vocab_size, num_labels, ckpt_dir):
         
         self.vocab_size = vocab_size
-        self.num_classes = num_classes
+        self.num_labels = num_labels
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
         self.train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
 
@@ -46,7 +47,7 @@ class ClassificationModel():
         model.add(Embedding(self.vocab_size, 128))
         model.add(Bidirectional(GRU(units = 256, return_sequences = True)))
         model.add(Bidirectional(GRU(units = 256)))
-        model.add(Dense(self.num_classes, activation = 'tanh'))
+        model.add(Dense(self.num_labels, activation = 'tanh'))
         return model
     
 
@@ -138,12 +139,85 @@ class ClassificationModel():
 
         return self.test_loss.result().numpy(), self.test_accuracy.result().numpy()
 
-class BERTClassificationModel:
-    def __init__(self, model_name, num_classes = 2):
+class BiRNN(nn.Module):
+    def __init__(self, vocab_size, num_labels):
         
-        self.num_classes = num_classes
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, 128)
+        self.bigru = nn.GRU(128, 256, bidirectional=True)
+        self.fc = nn.Linear(512, num_labels)
+        self.num_labels = num_labels
+        
+    def forward(self, 
+                text,
+                labels):
+
+        embedded = self.embedding(text)        
+        out = self.bigru(embedded)
+        logits = self.fc(out[0][:,0,:])
+        loss = self.compute_loss(logits, labels)
+        return {'loss':loss,
+                'logits':logits} 
+    
+    def compute_loss(self, logits, labels):
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(logits.view(-1, self.num_labels), labels)
+        return loss
+
+class SimpleClassificationModel:
+    def __init__(self, vocab_size, num_labels = 2):
+        
+        self.num_labels = num_labels
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        config = AutoConfig.from_pretrained(model_name,num_labels=num_classes)
+        self.model = BiRNN(vocab_size, num_labels)
+        self.model.to(self.device)
+
+        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+    
+    def train(self, datasets, epochs = 30, print_every = 10):
+        train_dataset, valid_dataset, test_dataset = datasets 
+        self.model.train().to(self.device)
+        for epoch in range(epochs):
+            for i, batch in enumerate(train_dataset):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                loss = outputs['loss']
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+                labels = batch['labels'].cpu() 
+                preds = outputs['logits'].argmax(-1).cpu() 
+                accuracy = accuracy_score(labels, preds)
+                if i% print_every == 0:
+                    print(f"Epoch {epoch} Batch {i} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
+            
+            results = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+        
+        results = self.evaluate_dataset(test_dataset)
+        print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
+    
+    def evaluate_dataset(self, dataset):
+        accuracy = 0
+        loss = 0 
+        for _, batch in enumerate(dataset):
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            outputs = self.model(**batch)
+            loss = outputs['loss']
+            labels = batch['labels'].cpu() 
+            preds = outputs['logits'].argmax(-1).cpu() 
+            accuracy += accuracy_score(labels, preds) /len(dataset)
+            loss += loss / len(dataset)
+        return {'loss':loss, 'accuracy':accuracy}
+
+class BERTClassificationModel:
+    def __init__(self, model_name, num_labels = 2):
+        
+        self.num_labels = num_labels
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        config = AutoConfig.from_pretrained(model_name,num_labels=num_labels)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, config = config)
         self.model.to(self.device)
 
@@ -168,23 +242,22 @@ class BERTClassificationModel:
                 if i% print_every == 0:
                     print(f"Epoch {epoch} Batch {i} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
-            valid_accuracy = 0
-            for _, batch in enumerate(valid_dataset):
-                batch = {k: v.to(self.device) for k, v in batch.items()}
-                outputs = self.model(**batch)
-                loss = outputs[0]
-                labels = batch['labels'].cpu() 
-                preds = outputs['logits'].argmax(-1).cpu() 
-                valid_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
-            print(f"Epoch {epoch} Valid Loss {loss:.4f} Valid Accuracy {valid_accuracy:.4f}")
+            results = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
         
-        test_accuracy = 0
-        for _, batch in enumerate(test_dataset):
+        results = self.evaluate_dataset(test_dataset)
+        print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
+    
+    def evaluate_dataset(self, dataset):
+        accuracy = 0
+        loss = 0 
+        for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
             loss = outputs[0]
             labels = batch['labels'].cpu() 
             preds = outputs['logits'].argmax(-1).cpu() 
-            test_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
-        print(f"Test Loss {loss:.4f} Test Accuracy {valid_accuracy:.4f}")
+            accuracy += accuracy_score(labels, preds) /len(dataset)
+            loss += loss / len(dataset)
+        return {'loss':loss, 'accuracy':accuracy}
             
