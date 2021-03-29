@@ -9,8 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import logging 
 import sys
-from .dataset import tokenize_data, create_dataset
-from .models import ClassificationModel
+from .dataset import tokenize_data, create_dataset, tokenize_datav2
+from .models import ClassificationModel, BERTClassificationModel
 from .utils import get_tokenizer
 import configparser
 
@@ -36,12 +36,17 @@ class TrainStrategy:
     batch_size = int(config['train']['batch_size'])
     train_dir = config['train']['dir']
     self.epochs = int(config['train']['epochs'])
+    model_name =  config['model']['model_name']
 
-    data = tokenize_data(dataset_name, config, data_config, tokenizer, 
-    vocab_size = vocab_size, max_tokens=max_tokens)
-    self.datasets = create_dataset(data, batch_size = batch_size)
-    ckpt_dir = f'{train_dir}/ckpts/vocab_size_{vocab_size}/{tokenizer_name}/'
-    self.model = ClassificationModel(vocab_size, num_classes, ckpt_dir)
+    if 'bert' in model_name:
+      self.datasets = tokenize_datav2(dataset_name, config, data_config)
+      self.model = BERTClassificationModel(model_name, num_classes)
+    else:
+      data = tokenize_data(dataset_name, config, data_config, tokenizer, 
+      vocab_size = vocab_size, max_tokens=max_tokens)
+      self.datasets = create_dataset(data, batch_size = batch_size)
+      ckpt_dir = f'{train_dir}/ckpts/vocab_size_{vocab_size}/{tokenizer_name}/'
+      self.model = ClassificationModel(vocab_size, num_classes, ckpt_dir)
 
   def start(self):
     self.model.train(self.datasets, epochs = self.epochs)

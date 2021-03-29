@@ -4,6 +4,8 @@ import tnkeeh as tn
 from datasets import load_dataset
 import os 
 from .utils import get_preprocessing_args
+from transformers import AutoTokenizer
+import torch
 
 def write_split(dataset, config, data_config, split = 'train'):
     data = []
@@ -73,6 +75,7 @@ def tokenize_data(dataset_name, config, data_config, tokenizer, vocab_size = 100
   test_data = tokenizer.encode_sentences(test_text, out_length=max_tokens)
   return (train_data, train_lbls), (valid_data, valid_lbls), (test_data, test_lbls)
 
+
 def create_dataset(data, batch_size = 256, buffer_size = 50000):
   train_data, valid_data, test_data = data
   train_dataset = tf.data.Dataset.from_tensor_slices(train_data).shuffle(buffer_size)
@@ -84,3 +87,23 @@ def create_dataset(data, batch_size = 256, buffer_size = 50000):
   test_dataset = tf.data.Dataset.from_tensor_slices(test_data)
   test_dataset = test_dataset.batch(batch_size)
   return train_dataset, valid_dataset, test_dataset
+
+
+def tokenize_datav2(dataset_name, config, data_config):
+    def encode(examples):
+      return tokenizer(examples['text'], truncation=True, padding='max_length')
+
+
+    model_name =  config['model']['model_name']
+    tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False)
+    dataset = load_dataset(dataset_name)
+    dataset = dataset.map(encode, batched=True)
+    dataset = dataset.map(lambda examples: {'labels': examples['label']}, batched=True)
+    print(dataset)
+    splits = split_dataset(dataset)
+
+    for split in splits:
+        dataset[split].set_format(type='torch', columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels'])
+        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=32)
+    return [dataset['train'], dataset['valid'], dataset['test']]
+

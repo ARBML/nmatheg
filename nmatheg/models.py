@@ -2,8 +2,13 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import GRU, Embedding, Dense, Input, Dropout, Bidirectional
+from transformers import AutoModelForSequenceClassification, AutoConfig
 import os
 import time
+from tqdm import tqdm
+import torch
+from torch.optim import AdamW
+from sklearn.metrics import accuracy_score
 
 class ClassificationModel():
     def __init__(self, vocab_size, num_classes, ckpt_dir):
@@ -65,7 +70,6 @@ class ClassificationModel():
         self.train_loss(loss)
         self.train_accuracy(self.accuracy_function(tar, predictions))
 
-    # @tf.function(input_signature=train_step_signature)
     def valid_step(self, inp, tar):
         predictions = self.model(inp)
         loss = self.loss_function(tar, predictions)
@@ -73,7 +77,6 @@ class ClassificationModel():
         self.valid_loss(loss)
         self.valid_accuracy(self.accuracy_function(tar, predictions))
 
-    # @tf.function(input_signature=train_step_signature)
     def test_step(self, inp, tar):
         predictions = self.model(inp)
         loss = self.loss_function(tar, predictions)
@@ -134,3 +137,53 @@ class ClassificationModel():
             self.test_step(inp, tar)
 
         return self.test_loss.result().numpy(), self.test_accuracy.result().numpy()
+
+class BERTClassificationModel:
+    def __init__(self, model_name, num_classes = 2):
+        
+        self.num_classes = num_classes
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        config = AutoConfig.from_pretrained(model_name,num_labels=num_classes)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, config = config)
+        self.model.to(self.device)
+
+        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+    
+
+    def train(self, datasets, epochs = 30, verbose = 0):
+        train_dataset, valid_dataset, test_dataset = datasets 
+        self.model.train().to(self.device)
+        for epoch in range(epochs):
+            for _, batch in enumerate(train_dataset):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                loss = outputs[0]
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+                labels = batch['labels']
+                preds = outputs['logits'].argmax(-1)
+                accuracy = accuracy_score(labels, preds)
+                print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
+            
+            valid_accuracy = 0
+            for _, batch in enumerate(valid_dataset):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                loss = outputs[0]
+                labels = batch['labels']
+                preds = outputs['logits'].argmax(-1)
+                valid_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {loss:.4f} Valid Accuracy {valid_accuracy:.4f}")
+        
+        test_accuracy = 0
+        for _, batch in enumerate(test_dataset):
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            outputs = self.model(**batch)
+            loss = outputs[0]
+            labels = batch['labels']
+            preds = outputs['logits'].argmax(-1)
+            test_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
+        print(f"Test Loss {loss:.4f} Test Accuracy {valid_accuracy:.4f}")
+            
