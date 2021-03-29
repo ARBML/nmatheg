@@ -2,3 +2,4 @@ tnkeeh
 tkseem
 tfds-nightly
 datasets
+transformers
