@@ -27,15 +27,18 @@ class TrainStrategy:
 
     self.print_every = int(config['log']['print_every'])
 
+    model_config = {'model_name':model_name,
+                    'vocab_size':vocab_size,
+                    'num_labels':num_labels}
+
     if 'bert' in model_name:
       self.datasets = create_dataset_bert(dataset_name, config, 
       data_config, batch_size = batch_size)
-      self.model = BERTClassificationModel(model_name, num_labels)
+      self.model = BERTClassificationModel(model_config)
     else:
       self.datasets = create_dataset_simple(dataset_name, config, 
       data_config, batch_size = batch_size)
-      self.model = SimpleClassificationModel(vocab_size, num_labels)
+      self.model = SimpleClassificationModel(model_config)
 
   def start(self):
-    self.model.train(self.datasets, epochs = self.epochs,
-              print_every = self.print_every)
+    self.model.train(self.datasets, epochs = self.epochs)
