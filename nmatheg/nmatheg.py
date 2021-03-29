@@ -38,7 +38,7 @@ class TrainStrategy:
     self.epochs = int(config['train']['epochs'])
     model_name =  config['model']['model_name']
 
-    self.print_every = config['log']['print_every']
+    self.print_every = int(config['log']['print_every'])
 
     if 'bert' in model_name:
       self.datasets = create_dataset_bert(dataset_name, config, data_config, batch_size = batch_size)
