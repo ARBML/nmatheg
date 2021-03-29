@@ -162,8 +162,8 @@ class BERTClassificationModel:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
-                labels = batch['labels']
-                preds = outputs['logits'].argmax(-1)
+                labels = batch['labels'].cpu() 
+                preds = outputs['logits'].argmax(-1).cpu() 
                 accuracy = accuracy_score(labels, preds)
                 print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
@@ -172,8 +172,8 @@ class BERTClassificationModel:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs[0]
-                labels = batch['labels']
-                preds = outputs['logits'].argmax(-1)
+                labels = batch['labels'].cpu() 
+                preds = outputs['logits'].argmax(-1).cpu() 
                 valid_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
             print(f"Epoch {epoch} Valid Loss {loss:.4f} Valid Accuracy {valid_accuracy:.4f}")
         
@@ -182,8 +182,8 @@ class BERTClassificationModel:
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
             loss = outputs[0]
-            labels = batch['labels']
-            preds = outputs['logits'].argmax(-1)
+            labels = batch['labels'].cpu() 
+            preds = outputs['logits'].argmax(-1).cpu() 
             test_accuracy += accuracy_score(labels, preds) /len(valid_dataset)
         print(f"Test Loss {loss:.4f} Test Accuracy {valid_accuracy:.4f}")
             
