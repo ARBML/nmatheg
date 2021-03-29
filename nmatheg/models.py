@@ -150,11 +150,11 @@ class BERTClassificationModel:
         self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
     
 
-    def train(self, datasets, epochs = 30, verbose = 0):
+    def train(self, datasets, epochs = 30, print_every = 10):
         train_dataset, valid_dataset, test_dataset = datasets 
         self.model.train().to(self.device)
         for epoch in range(epochs):
-            for _, batch in enumerate(train_dataset):
+            for i, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs[0]
@@ -165,7 +165,8 @@ class BERTClassificationModel:
                 labels = batch['labels'].cpu() 
                 preds = outputs['logits'].argmax(-1).cpu() 
                 accuracy = accuracy_score(labels, preds)
-                print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
+                if i% print_every == 0:
+                    print(f"Epoch {epoch} Batch {i} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
             valid_accuracy = 0
             for _, batch in enumerate(valid_dataset):

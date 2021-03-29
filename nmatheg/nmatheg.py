@@ -38,6 +38,8 @@ class TrainStrategy:
     self.epochs = int(config['train']['epochs'])
     model_name =  config['model']['model_name']
 
+    self.print_every = config['log']['print_every']
+
     if 'bert' in model_name:
       self.datasets = create_dataset_bert(dataset_name, config, data_config, batch_size = batch_size)
       self.model = BERTClassificationModel(model_name, num_classes)
@@ -49,4 +51,5 @@ class TrainStrategy:
       self.model = ClassificationModel(vocab_size, num_classes, ckpt_dir)
 
   def start(self):
-    self.model.train(self.datasets, epochs = self.epochs)
+    self.model.train(self.datasets, epochs = self.epochs,
+              print_every = self.print_every)
