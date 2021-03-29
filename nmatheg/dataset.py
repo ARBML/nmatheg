@@ -89,7 +89,7 @@ def create_dataset(data, batch_size = 256, buffer_size = 50000):
   return train_dataset, valid_dataset, test_dataset
 
 
-def tokenize_datav2(dataset_name, config, data_config):
+def create_dataset_bert(dataset_name, config, data_config, batch_size = 32):
     def encode(examples):
       return tokenizer(examples['text'], truncation=True, padding='max_length')
 
@@ -99,11 +99,10 @@ def tokenize_datav2(dataset_name, config, data_config):
     dataset = load_dataset(dataset_name)
     dataset = dataset.map(encode, batched=True)
     dataset = dataset.map(lambda examples: {'labels': examples['label']}, batched=True)
-    print(dataset)
     splits = split_dataset(dataset)
 
     for split in splits:
         dataset[split].set_format(type='torch', columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels'])
-        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=32)
+        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     return [dataset['train'], dataset['valid'], dataset['test']]
 

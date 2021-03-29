@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import logging 
 import sys
-from .dataset import tokenize_data, create_dataset, tokenize_datav2
+from .dataset import tokenize_data, create_dataset, create_dataset_bert
 from .models import ClassificationModel, BERTClassificationModel
 from .utils import get_tokenizer
 import configparser
@@ -39,7 +39,7 @@ class TrainStrategy:
     model_name =  config['model']['model_name']
 
     if 'bert' in model_name:
-      self.datasets = tokenize_datav2(dataset_name, config, data_config)
+      self.datasets = create_dataset_bert(dataset_name, config, data_config, batch_size = batch_size)
       self.model = BERTClassificationModel(model_name, num_classes)
     else:
       data = tokenize_data(dataset_name, config, data_config, tokenizer, 
