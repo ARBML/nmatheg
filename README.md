@@ -81,7 +81,7 @@ We are supporting huggingface datasets for Arabic. You can find the supported da
 
 ## Tasks 
 
-Currently only supporting classification tasks using bidirectional GRUs. We are aplanning to support more complicated mechanisms like BERT fine-tuning. 
+Currently only supporting classification tasks using bidirectional GRUs. We also support more complicated mechanisms like BERT fine-tuning. 
 
 ## Demo 
 Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/blob/main/demo.ipynb) for a quick demo. 

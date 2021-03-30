@@ -18,10 +18,10 @@ class BiRNN(nn.Module):
         self.num_labels = num_labels
         
     def forward(self, 
-                text,
+                input_ids,
                 labels):
 
-        embedded = self.embedding(text)        
+        embedded = self.embedding(input_ids)        
         out = self.bigru(embedded)
         logits = self.fc(out[0][:,0,:])
         loss = self.compute_loss(logits, labels)

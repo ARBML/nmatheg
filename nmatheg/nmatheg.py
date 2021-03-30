@@ -1,8 +1,9 @@
 
 import os 
-from .dataset import create_dataset_simple, create_dataset_bert
+from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTClassificationModel
 from .utils import get_tokenizer
+from .configs import create_configs
 import configparser
 
 class TrainStrategy:
@@ -16,32 +17,13 @@ class TrainStrategy:
     data_ini_path = os.path.join(rel_path, "datasets.ini")
     data_config.read(data_ini_path)
 
-    vocab_size = int(config['tokenization']['vocab_size'])
+    self.train_config, self.model_config = create_configs(config, data_config)
+    self.datasets = create_dataset(config, data_config)
 
-    dataset_name = config['dataset']['dataset_name']
-    num_labels = int(data_config[dataset_name]['num_labels'])
-
-    batch_size = int(config['train']['batch_size'])
-    self.epochs = int(config['train']['epochs'])
-    model_name =  config['model']['model_name']
-
-    self.print_every = int(config['log']['print_every'])
-
-    model_config = {'model_name':model_name,
-                    'vocab_size':vocab_size,
-                    'num_labels':num_labels}
-
-    self.save_dir = config['train']['save_dir']
-
-    if 'bert' in model_name:
-      self.datasets = create_dataset_bert(dataset_name, config, 
-      data_config, batch_size = batch_size)
-      self.model = BERTClassificationModel(model_config)
+    if 'bert' in self.model_config['model_name']:
+      self.model = BERTClassificationModel(self.model_config)
     else:
-      self.datasets = create_dataset_simple(dataset_name, config, 
-      data_config, batch_size = batch_size)
-      self.model = SimpleClassificationModel(model_config)
+      self.model = SimpleClassificationModel(self.model_config)
 
   def start(self):
-    self.model.train(self.datasets, epochs = self.epochs,
-                    save_dir = self.save_dir)
+    self.model.train(self.datasets, **self.train_config)

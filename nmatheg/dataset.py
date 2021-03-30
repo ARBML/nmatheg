@@ -28,7 +28,6 @@ def split_dataset(dataset):
     return dataset 
 
 
-
 def clean_dataset(dataset, config, data_config):
     dataset_name = config['dataset']['dataset_name']
     text = data_config[dataset_name]['text']
@@ -44,47 +43,39 @@ def write_data_for_train(dataset, text):
         data.append(sample[text])    
     open(f'data.txt', 'w').write(('\n').join(data))
 
-def create_dataset_simple(dataset_name, config, data_config, batch_size = 32):
+def create_dataset(config, data_config):
+
     tokenizer_name = config['tokenization']['tokenizer_name']
     max_tokens = int(config['tokenization']['max_tokens'])
-    tokenizer = get_tokenizer(tokenizer_name)
-    text = data_config[dataset_name]['text']
-
-    def encode(example):
-        example['text'] = tokenizer.encode_sentences(example['text'], out_length= max_tokens)
-        return example
-
-    dataset = load_dataset(dataset_name)
-    dataset = clean_dataset(dataset, config, data_config)
-    write_data_for_train(dataset['train'], text)
-
     vocab_size  = int(config['tokenization']['vocab_size'])
-    tokenizer = tokenizer(vocab_size = vocab_size)
-    tokenizer.train('data.txt')
 
-    dataset = dataset.map(encode, batched=True)
-    dataset = dataset.map(lambda examples: {'labels': examples['label']}, batched=True)
-    splits = split_dataset(dataset)
-    for split in splits:
-        dataset[split].set_format(type='torch', columns=['text', 'labels'])
-        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
-    return [dataset['train'], dataset['valid'], dataset['test']]
+    batch_size = config['train']['batch_size']
+    dataset_name = config['dataset']['dataset_name']
+    model_name = config['model']['model_name']
 
-def create_dataset_bert(dataset_name, config, data_config, batch_size = 32):
-    def encode(examples):
-      return tokenizer(examples['text'], truncation=True, padding='max_length')
-
-
-    model_name =  config['model']['model_name']
-    tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False)
+    # clean and load data
     dataset = load_dataset(dataset_name)
     dataset = clean_dataset(dataset, config, data_config)
-    dataset = dataset.map(encode, batched=True)
-    dataset = dataset.map(lambda examples: {'labels': examples['label']}, batched=True)
-    splits = split_dataset(dataset)
 
+    # tokenize data
+    if 'bert' in model_name:
+        tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False)
+        dataset = dataset.map(lambda examples:tokenizer(examples['text'], truncation=True, padding='max_length'), batched=True)
+        columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+    else:
+        write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+        tokenizer = get_tokenizer(tokenizer_name)
+        tokenizer = tokenizer(vocab_size = vocab_size)
+        tokenizer.train('data.txt')
+        dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
+        columns=['input_ids', 'labels']        
+    
+    # split datasets 
+    dataset = dataset.map(lambda examples:{'labels': examples['label']}, batched=True)
+    splits = split_dataset(dataset)
+    
+    #create loaders 
     for split in splits:
-        dataset[split].set_format(type='torch', columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels'])
+        dataset[split].set_format(type='torch', columns=columns)
         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     return [dataset['train'], dataset['valid'], dataset['test']]
-
