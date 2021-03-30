@@ -1,4 +1,5 @@
 def create_configs(config, data_config):
+    dataset_name = config['dataset']['dataset_name']
     train_config = {'epochs':int(config['train']['epochs']),
                     'save_dir':config['train']['save_dir']}
 
