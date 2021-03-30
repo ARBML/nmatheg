@@ -49,7 +49,7 @@ def create_dataset(config, data_config):
     max_tokens = int(config['tokenization']['max_tokens'])
     vocab_size  = int(config['tokenization']['vocab_size'])
 
-    batch_size = config['train']['batch_size']
+    batch_size = int(config['train']['batch_size'])
     dataset_name = config['dataset']['dataset_name']
     model_name = config['model']['model_name']
 
