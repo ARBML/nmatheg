@@ -49,7 +49,7 @@ class BaseModel:
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
-            self.model.train()
+            self.model.train().to(self.device)
             for _, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
@@ -65,7 +65,7 @@ class BaseModel:
             
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
-            self.model.eval()
+            self.model.eval().to(self.device)
             results = self.evaluate_dataset(valid_dataset)
             print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
 
