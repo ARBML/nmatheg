@@ -31,6 +31,8 @@ class TrainStrategy:
                     'vocab_size':vocab_size,
                     'num_labels':num_labels}
 
+    self.save_dir = config['train']['save_dir']
+
     if 'bert' in model_name:
       self.datasets = create_dataset_bert(dataset_name, config, 
       data_config, batch_size = batch_size)
@@ -41,4 +43,5 @@ class TrainStrategy:
       self.model = SimpleClassificationModel(model_config)
 
   def start(self):
-    self.model.train(self.datasets, epochs = self.epochs)
+    self.model.train(self.datasets, epochs = self.epochs,
+                    save_dir = self.save_dir)

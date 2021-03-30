@@ -42,14 +42,15 @@ class BaseModel:
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    def train(self, datasets, epochs = 30):
+    def train(self, datasets, epochs = 30, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets 
-        self.model.train().to(self.device)
+        filepath = os.path.join(save_dir, 'model.pth')
+        best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
-            
-            for i, batch in enumerate(train_dataset):
+            self.model.train()
+            for _, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs['loss']
@@ -64,9 +65,19 @@ class BaseModel:
             
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
+            self.model.eval()
             results = self.evaluate_dataset(valid_dataset)
             print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+
+            val_accuracy = results['accuracy']
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
+                torch.save(self.model.state_dict(), filepath)
+
+            #Later to restore:
         
+        self.model.load_state_dict(torch.load(filepath))
+        self.model.eval()
         results = self.evaluate_dataset(test_dataset)
         print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
     
