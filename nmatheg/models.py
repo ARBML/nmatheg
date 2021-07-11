@@ -62,7 +62,7 @@ class BaseModel:
                 preds = outputs['logits'].argmax(-1).cpu() 
                 accuracy += accuracy_score(labels, preds) /len(train_dataset)
                 loss += loss / len(train_dataset)
-            
+                batch = None 
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
             self.model.eval().to(self.device)
@@ -80,6 +80,7 @@ class BaseModel:
         self.model.eval()
         results = self.evaluate_dataset(test_dataset)
         print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
+        return results 
     
     def evaluate_dataset(self, dataset):
         accuracy = 0
@@ -92,6 +93,7 @@ class BaseModel:
             preds = outputs['logits'].argmax(-1).cpu() 
             accuracy += accuracy_score(labels, preds) /len(dataset)
             loss += loss / len(dataset)
+            batch = None 
         return {'loss':loss, 'accuracy':accuracy}
 
 class SimpleClassificationModel(BaseModel):
@@ -101,9 +103,19 @@ class SimpleClassificationModel(BaseModel):
         self.model.to(self.device)    
         self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
 
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()
+
 class BERTClassificationModel(BaseModel):
     def __init__(self, config):
         BaseModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config = config)
         self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+    
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()

@@ -18,16 +18,23 @@ class TrainStrategy:
     self.data_config.read(data_ini_path)
 
   def start(self):
-    
-    self.train_config, self.model_config = create_configs(self.config, self.data_config)
-    self.datasets = create_dataset(self.config, self.data_config)
-    model_names = self.model_config['model_name'].split(',')
+    model_names = self.config['model']['model_name'].split(',')
+    dataset_names = self.config['dataset']['dataset_name'].split(',')
 
-    for model_name in model_names:
-      self.model_config['model_name'] = model_name
-      if 'bert' in model_name:
-        self.model = BERTClassificationModel(self.model_config)
-      else:
-        self.model = SimpleClassificationModel(self.model_config)
+    for dataset_name in dataset_names:
+      self.self.config['dataset']['dataset_name'] = dataset_name
 
-      self.model.train(self.datasets, **self.train_config)
+      for model_name in model_names:
+        self.config['model']['model_name'] = model_name
+        self.train_config, self.model_config = create_configs(self.config, self.data_config)
+        self.datasets = create_dataset(self.config, self.data_config)
+        
+        if 'bert' in model_name:
+          self.model = BERTClassificationModel(self.model_config)
+        else:
+          self.model = SimpleClassificationModel(self.model_config)
+
+        results = self.model.train(self.datasets, **self.train_config) 
+        results['model_name'] = model_name
+        results['dataset_name'] = dataset_name 
+        self.model.wipe_memory()     
