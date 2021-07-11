@@ -8,19 +8,19 @@ import torch
 from .utils import get_tokenizer
 
 
-def split_dataset(dataset):
+def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
-        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1)
+        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
         train_valid_dataset['valid'] = train_valid_dataset.pop('test')
 
-        train_test_dataset = train_valid_dataset['train'].train_test_split(test_size=0.1)
+        train_test_dataset = train_valid_dataset['train'].train_test_split(test_size=0.1, seed = seed)
         
         dataset['train'] = train_test_dataset['train']
         dataset['test'] = train_test_dataset['test']
         dataset['valid'] = train_valid_dataset['valid']
 
     elif not('valid' in dataset):
-        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1)
+        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
         train_valid_dataset['valid'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
         dataset['valid'] = train_valid_dataset['valid']

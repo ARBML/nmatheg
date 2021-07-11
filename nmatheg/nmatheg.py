@@ -2,8 +2,8 @@
 import os 
 from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTClassificationModel
-from .utils import get_tokenizer
 from .configs import create_configs
+import pandas as pd
 import configparser
 
 class TrainStrategy:
@@ -20,6 +20,7 @@ class TrainStrategy:
   def start(self):
     model_names = self.config['model']['model_name'].split(',')
     dataset_names = self.config['dataset']['dataset_name'].split(',')
+
     output = [] 
     for dataset_name in dataset_names:
       self.config['dataset']['dataset_name'] = dataset_name
@@ -39,4 +40,14 @@ class TrainStrategy:
         results['dataset_name'] = dataset_name 
         output.append(results)
         self.model.wipe_memory()
-    return output     
+    
+    model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
+    for row in results:
+      dataset_name = row['dataset_name']
+      model_results[row['model_name']][dataset_names.index(dataset_name)] = round(row['accuracy']*100, 2)
+
+    rows = []
+    for model_name in model_results:
+      rows.append([model_name]+model_results[model_name])
+
+    return pd.DataFrame(rows, columns = ['Model']+dataset_names)     
