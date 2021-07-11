@@ -94,7 +94,7 @@ class BaseModel:
             accuracy += accuracy_score(labels, preds) /len(dataset)
             loss += loss / len(dataset)
             batch = None 
-        return {'loss':loss, 'accuracy':accuracy}
+        return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
 
 class SimpleClassificationModel(BaseModel):
     def __init__(self, config):

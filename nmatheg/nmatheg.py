@@ -20,9 +20,9 @@ class TrainStrategy:
   def start(self):
     model_names = self.config['model']['model_name'].split(',')
     dataset_names = self.config['dataset']['dataset_name'].split(',')
-
+    output = [] 
     for dataset_name in dataset_names:
-      self.self.config['dataset']['dataset_name'] = dataset_name
+      self.config['dataset']['dataset_name'] = dataset_name
 
       for model_name in model_names:
         self.config['model']['model_name'] = model_name
@@ -37,4 +37,6 @@ class TrainStrategy:
         results = self.model.train(self.datasets, **self.train_config) 
         results['model_name'] = model_name
         results['dataset_name'] = dataset_name 
-        self.model.wipe_memory()     
+        output.append(results)
+        self.model.wipe_memory()
+    return output     

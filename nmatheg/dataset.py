@@ -60,18 +60,18 @@ def create_dataset(config, data_config):
     # tokenize data
     if 'bert' in model_name:
         tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False)
-        dataset = dataset.map(lambda examples:tokenizer(examples['text'], truncation=True, padding='max_length'), batched=True)
+        dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
         columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
     else:
         write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
         tokenizer = get_tokenizer(tokenizer_name)
         tokenizer = tokenizer(vocab_size = vocab_size)
         tokenizer.train('data.txt')
-        dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
+        dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
         columns=['input_ids', 'labels']        
     
     # split datasets 
-    dataset = dataset.map(lambda examples:{'labels': examples['label']}, batched=True)
+    dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
     splits = split_dataset(dataset)
     
     #create loaders 
