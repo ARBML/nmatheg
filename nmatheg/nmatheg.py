@@ -42,7 +42,7 @@ class TrainStrategy:
         self.model.wipe_memory()
     
     model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
-    for row in results:
+    for row in output:
       dataset_name = row['dataset_name']
       model_results[row['model_name']][dataset_names.index(dataset_name)] = round(row['accuracy']*100, 2)
 
