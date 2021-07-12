@@ -10,7 +10,7 @@ def get_preprocessing_args(config):
     map_bool = {'True':True, 'False':False, '[]': []}
     for key in config['preprocessing']:
         val = config['preprocessing'][key]
-        if key in map_bool:
+        if val in map_bool.keys():
             args[key] = map_bool[val]
         else:
             args[key] = val 
