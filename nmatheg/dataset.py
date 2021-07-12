@@ -59,7 +59,7 @@ def create_dataset(config, data_config):
 
     # tokenize data
     if 'bert' in model_name:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
         dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
         columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
     else:
