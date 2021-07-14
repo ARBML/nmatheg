@@ -16,7 +16,7 @@ def process_dataset(dataset):
             sent_label.append(label)
             sentence.append(token)
             if len(sentence) == 512:
-                sentences.append(sentence) 
+                sentences.append((' ').join(sentence)) 
                 sent_labels.append(sent_label)
                 sentence = []
                 sent_label = []

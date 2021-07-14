@@ -6,7 +6,7 @@ from .utils import get_preprocessing_args
 from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
-from preprocess_ner import process_dataset
+from .preprocess_ner import process_dataset
 
 def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
@@ -78,9 +78,8 @@ def create_dataset(config, data_config):
         dataset = process_dataset(dataset)
         tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
         dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
-        columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
-        columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+        columns=['input_ids', 'attention_mask', 'labels']
         
     splits = split_dataset(dataset)
 
