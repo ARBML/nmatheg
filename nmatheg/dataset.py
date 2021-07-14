@@ -7,6 +7,7 @@ from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
+from .preprocess_qa import prepare_features
 
 def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
@@ -24,7 +25,6 @@ def split_dataset(dataset, seed = 42):
         train_valid_dataset['valid'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
         dataset['valid'] = train_valid_dataset['valid']
-        dataset['test'] = dataset['test']
     return dataset 
 
 
@@ -80,6 +80,15 @@ def create_dataset(config, data_config):
 
         for split in dataset:
             dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, config, data_config)
+                                                , batched=True, remove_columns=dataset[split].column_names)
+
+        columns=['input_ids', 'attention_mask', 'labels']
+    
+    elif task_name == 'question_answering':
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+
+        for split in dataset:
+            dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
 
         columns=['input_ids', 'attention_mask', 'labels']

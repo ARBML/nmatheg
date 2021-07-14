@@ -1,7 +1,7 @@
 # Creating a class to pull the words from the columns and create them into sentences
 import torch 
 from datasets import Dataset, DatasetDict
-#TODO this will ony work for caner
+
 def aggregate_tokens(dataset, config, data_config, max_len = 128):
     new_dataset = {}
     dataset_name = config['dataset']['dataset_name']

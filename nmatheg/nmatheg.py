@@ -1,7 +1,7 @@
 
 import os 
 from .dataset import create_dataset
-from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel
+from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel,BERTQuestionAnsweringModel
 from .configs import create_configs
 import pandas as pd
 import configparser
@@ -39,6 +39,9 @@ class TrainStrategy:
 
         elif task_name == 'token_classification':
           self.model = BERTTokenClassificationModel(self.model_config)
+
+        elif task_name == 'question_answering':
+          self.model = BERTQuestionAnsweringModel(self.model_config)
 
         results = self.model.train(self.datasets, **self.train_config) 
         results['model_name'] = model_name
