@@ -56,7 +56,7 @@ def create_dataset(config, data_config):
 
     # clean and load data
     dataset = load_dataset(dataset_name)
-    dataset = clean_dataset(dataset, config, data_config)
+    # dataset = clean_dataset(dataset, config, data_config)
     examples = dataset
     if task_name == 'text_classification':
         # tokenize data

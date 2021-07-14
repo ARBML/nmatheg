@@ -201,7 +201,7 @@ class BERTTokenClassificationModel(BaseTokenClassficationModel):
         self.optimizer = None 
         torch.cuda.empty_cache()
 
-from qa_utils import evaluate_metric
+from .qa_utils import evaluate_metric
 class BaseQuestionAnsweringModel:
     def __init__(self, config):
         self.model = nn.Module()
