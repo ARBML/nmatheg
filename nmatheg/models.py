@@ -7,6 +7,7 @@ import torch
 from torch.optim import AdamW
 from sklearn.metrics import accuracy_score
 import torch.nn as nn
+from accelerate import Accelerator
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels):
@@ -209,7 +210,7 @@ class BaseQuestionAnsweringModel:
         self.vocab_size = config['vocab_size']
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
+        self.accelerator = Accelerator()
     def train(self, datasets, examples, epochs = 30, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets
         train_examples, valid_examples, test_examples = examples
@@ -229,11 +230,9 @@ class BaseQuestionAnsweringModel:
                 start_logits = outputs.start_logits
                 end_logits = outputs.end_logits
 
-                # all_start_logits.append(accelerator.gather(start_logits).cpu().numpy())
-                # all_end_logits.append(accelerator.gather(end_logits).cpu().numpy())
+                all_start_logits.append(self.accelerator.gather(start_logits).cpu().numpy())
+                all_end_logits.append(self.accelerator.gather(end_logits).cpu().numpy())
                 
-                all_start_logits.append(start_logits.cpu().numpy())
-                all_end_logits.append(end_logits.cpu().numpy())
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()

@@ -3,3 +3,4 @@ tkseem
 tfds-nightly
 datasets
 transformers
+accelerate
