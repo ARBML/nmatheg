@@ -76,7 +76,7 @@ def create_dataset(config, data_config):
 
     elif task_name == 'token_classification':
         dataset = aggregate_tokens(dataset, config, data_config)
-        tokenizer = AutoTokenizer.from_pretrained('qarib/bert-base-qarib', use_fast=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         for split in dataset:
             dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, config, data_config)
