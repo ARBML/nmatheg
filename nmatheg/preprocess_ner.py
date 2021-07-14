@@ -24,7 +24,7 @@ def aggregate_tokens(dataset, max_sent_len = 512):
     return DatasetDict(new_dataset) 
 
 # https://github.com/huggingface/transformers/blob/44f5b260fe7a69cbd82be91b58c62a2879d530fa/examples/pytorch/token-classification/run_ner_no_trainer.py#L353
-def tokenize_and_align_labels(examples, tokenizer, data_config):
+def tokenize_and_align_labels(examples, tokenizer):
     tokenized_inputs = tokenizer(
         examples['token'],
         max_length=128,
