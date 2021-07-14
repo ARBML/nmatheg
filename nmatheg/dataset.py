@@ -79,7 +79,7 @@ def create_dataset(config, data_config):
         tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
         
         for split in dataset:
-            dataset[split] = tokenize_and_align_labels(dataset, tokenizer)
+            dataset[split] = tokenize_and_align_labels(dataset[split], tokenizer)
 
         columns=['input_ids', 'attention_mask', 'labels']
         
