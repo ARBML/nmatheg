@@ -1,7 +1,7 @@
 
 import os 
 from .dataset import create_dataset
-from .models import SimpleClassificationModel, BERTClassificationModel
+from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel
 from .configs import create_configs
 import pandas as pd
 import configparser
@@ -20,6 +20,7 @@ class TrainStrategy:
   def start(self):
     model_names = self.config['model']['model_name'].split(',')
     dataset_names = self.config['dataset']['dataset_name'].split(',')
+    task_name = self.config['dataset']['task']
 
     output = [] 
     for dataset_name in dataset_names:
@@ -30,10 +31,14 @@ class TrainStrategy:
         self.train_config, self.model_config = create_configs(self.config, self.data_config)
         self.datasets = create_dataset(self.config, self.data_config)
         
-        if 'bert' in model_name:
-          self.model = BERTClassificationModel(self.model_config)
-        else:
-          self.model = SimpleClassificationModel(self.model_config)
+        if task_name == 'text_classification':
+          if 'bert' in model_name:
+            self.model = BERTTextClassificationModel(self.model_config)
+          else:
+            self.model = SimpleClassificationModel(self.model_config)
+
+        elif task_name == 'token_classification':
+          self.model = BERTTokenClassificationModel(self.model_config)
 
         results = self.model.train(self.datasets, **self.train_config) 
         results['model_name'] = model_name

@@ -6,7 +6,7 @@ from .utils import get_preprocessing_args
 from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
-
+from preprocess_ner import process_dataset
 
 def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
@@ -52,28 +52,38 @@ def create_dataset(config, data_config):
     batch_size = int(config['train']['batch_size'])
     dataset_name = config['dataset']['dataset_name']
     model_name = config['model']['model_name']
+    task_name = config['dataset']['task']
 
     # clean and load data
     dataset = load_dataset(dataset_name)
     dataset = clean_dataset(dataset, config, data_config)
 
-    # tokenize data
-    if 'bert' in model_name:
+    if task_name == 'text_classification':
+        # tokenize data
+        if 'bert' in model_name:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
+            dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
+            columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+        else:
+            write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+            tokenizer = get_tokenizer(tokenizer_name)
+            tokenizer = tokenizer(vocab_size = vocab_size)
+            tokenizer.train('data.txt')
+            dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
+            columns=['input_ids', 'labels'] 
+        
+        dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+
+    elif task_name == 'token_classification':
+        dataset = process_dataset(dataset)
         tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
         dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
         columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
-    else:
-        write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
-        tokenizer = get_tokenizer(tokenizer_name)
-        tokenizer = tokenizer(vocab_size = vocab_size)
-        tokenizer.train('data.txt')
-        dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
-        columns=['input_ids', 'labels']        
-    
-    # split datasets 
-    dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+        dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+        columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+        
     splits = split_dataset(dataset)
-    
+
     #create loaders 
     for split in splits:
         dataset[split].set_format(type='torch', columns=columns)
