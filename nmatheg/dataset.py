@@ -57,7 +57,7 @@ def create_dataset(config, data_config):
     # clean and load data
     dataset = load_dataset(dataset_name)
     dataset = clean_dataset(dataset, config, data_config)
-
+    examples = dataset
     if task_name == 'text_classification':
         # tokenize data
         if 'bert' in model_name:
@@ -91,12 +91,16 @@ def create_dataset(config, data_config):
             dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
 
-        columns=['input_ids', 'attention_mask', 'labels']
+        columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         
     splits = split_dataset(dataset)
+    examples = split_dataset(examples)
 
     #create loaders 
     for split in splits:
         dataset[split].set_format(type='torch', columns=columns)
         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+    
+    if task_name == 'question_answering':
+        return [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]
     return [dataset['train'], dataset['valid'], dataset['test']]

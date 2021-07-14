@@ -29,7 +29,7 @@ class TrainStrategy:
       for model_name in model_names:
         self.config['model']['model_name'] = model_name
         self.train_config, self.model_config = create_configs(self.config, self.data_config)
-        self.datasets = create_dataset(self.config, self.data_config)
+        self.datasets, self.examples = create_dataset(self.config, self.data_config)
         
         if task_name == 'text_classification':
           if 'bert' in model_name:
@@ -43,7 +43,7 @@ class TrainStrategy:
         elif task_name == 'question_answering':
           self.model = BERTQuestionAnsweringModel(self.model_config)
 
-        results = self.model.train(self.datasets, **self.train_config) 
+        results = self.model.train(self.datasets, self.examples, **self.train_config) 
         results['model_name'] = model_name
         results['dataset_name'] = dataset_name 
         output.append(results)

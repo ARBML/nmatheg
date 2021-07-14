@@ -201,6 +201,7 @@ class BERTTokenClassificationModel(BaseTokenClassficationModel):
         self.optimizer = None 
         torch.cuda.empty_cache()
 
+from qa_utils import evaluate_metric
 class BaseQuestionAnsweringModel:
     def __init__(self, config):
         self.model = nn.Module()
@@ -209,24 +210,38 @@ class BaseQuestionAnsweringModel:
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    def train(self, datasets, epochs = 30, save_dir = '.'):
-        train_dataset, valid_dataset, test_dataset = datasets 
+    def train(self, datasets, examples, epochs = 30, save_dir = '.'):
+        train_dataset, valid_dataset, test_dataset = datasets
+        train_examples, valid_examples, test_examples = examples
+
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
             self.model.train().to(self.device)
+            all_start_logits = []
+            all_end_logits = []
             for _, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs['loss']
+                start_logits = outputs.start_logits
+                end_logits = outputs.end_logits
+
+                # all_start_logits.append(accelerator.gather(start_logits).cpu().numpy())
+                # all_end_logits.append(accelerator.gather(end_logits).cpu().numpy())
+                
+                all_start_logits.append(start_logits.cpu().numpy())
+                all_end_logits.append(end_logits.cpu().numpy())
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
                 loss += loss / len(train_dataset)
-                batch = None 
+                batch = None
+            metric = evaluate_metric(train_dataset, train_examples, all_start_logits, all_end_logits)
+            print(metric)
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
         #     self.model.eval().to(self.device)
@@ -262,7 +277,7 @@ class BaseQuestionAnsweringModel:
             batch = None
         return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
 
-class BERTQuestionAnsweringModel(BaseTokenClassficationModel):
+class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):
         BaseQuestionAnsweringModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name)
