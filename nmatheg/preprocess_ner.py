@@ -2,7 +2,7 @@
 import torch 
 from datasets import Dataset, DatasetDict
 #TODO this will ony work for caner
-def aggregate_tokens(dataset, max_sent_len = 512):
+def aggregate_tokens(dataset):
     new_dataset = {}
     
     for split in dataset:
@@ -15,8 +15,8 @@ def aggregate_tokens(dataset, max_sent_len = 512):
             token, label = item['token'], item['ner_tag']
             sent_label.append(label)
             sentence.append(token)
-            if len(sentence) == max_sent_len:
-                sentences.append((' ').join(sentence)) 
+            if len(sentence) == 512:
+                sentences.append(sentence) 
                 sent_labels.append(sent_label)
                 sentence = []
                 sent_label = []
@@ -30,11 +30,11 @@ def tokenize_and_align_labels(examples, tokenizer):
         max_length=128,
         padding='max_length',
         truncation=True,
+        # We use this argument because the texts in our dataset are lists of words (with a label for each word).
         is_split_into_words=True,
     )
     labels = []
     for i, label in enumerate(examples['ner_tag']):
-        
         word_ids = tokenized_inputs.word_ids(batch_index=i)
         previous_word_idx = None
         label_ids = []

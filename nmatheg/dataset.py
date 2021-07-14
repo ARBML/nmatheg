@@ -76,10 +76,10 @@ def create_dataset(config, data_config):
 
     elif task_name == 'token_classification':
         dataset = aggregate_tokens(dataset)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-        
+        tokenizer = AutoTokenizer.from_pretrained('qarib/bert-base-qarib', use_fast=True)
+
         for split in dataset:
-            dataset[split] = tokenize_and_align_labels(dataset[split], tokenizer)
+            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer), batched=True, remove_columns=dataset[split].column_names)
 
         columns=['input_ids', 'attention_mask', 'labels']
         
