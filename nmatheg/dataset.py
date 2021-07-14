@@ -6,7 +6,7 @@ from .utils import get_preprocessing_args
 from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
-from .preprocess_ner import process_dataset
+from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 
 def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
@@ -75,10 +75,12 @@ def create_dataset(config, data_config):
         dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
 
     elif task_name == 'token_classification':
-        dataset = process_dataset(dataset)
+        dataset = aggregate_tokens(dataset)
         tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-        dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
-        dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+        
+        for split in dataset:
+            dataset[split] = tokenize_and_align_labels(dataset, tokenizer)
+
         columns=['input_ids', 'attention_mask', 'labels']
         
     splits = split_dataset(dataset)

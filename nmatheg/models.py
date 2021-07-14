@@ -151,28 +151,43 @@ class BaseTokenClassficationModel:
                 logits = outputs['logits'].detach().cpu().numpy()
                 flat_preds = np.argmax(logits, axis=-1).flatten()
                 flat_labels = labels.flatten()
-                accuracy += np.sum(flat_preds == flat_labels)/len(train_dataset)
+                accuracy += (np.sum(flat_preds == flat_labels)/len(flat_labels))/len(train_dataset)
 
                 loss += loss / len(train_dataset)
                 batch = None 
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
-            # self.model.eval().to(self.device)
-            # results = self.evaluate_dataset(valid_dataset)
-            # print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+            self.model.eval().to(self.device)
+            results = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
 
-            # val_accuracy = results['accuracy']
-            # if val_accuracy > best_accuracy:
-            #     best_accuracy = val_accuracy
-            #     torch.save(self.model.state_dict(), filepath)
-
-            #Later to restore:
+            val_accuracy = results['accuracy']
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
+                torch.save(self.model.state_dict(), filepath)
         
-        # self.model.load_state_dict(torch.load(filepath))
-        # self.model.eval()
-        # results = self.evaluate_dataset(test_dataset)
-        # print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
-        return {'loss':0.0, 'accuracy':100.0} 
+        self.model.load_state_dict(torch.load(filepath))
+        self.model.eval()
+        results = self.evaluate_dataset(test_dataset)
+        print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
+        return results
+        
+    def evaluate_dataset(self, dataset):
+        accuracy = 0
+        loss = 0 
+        for _, batch in enumerate(dataset):
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            outputs = self.model(**batch)
+            loss = outputs['loss']
+            labels = batch['labels'].detach().cpu().numpy() 
+            logits = outputs['logits'].detach().cpu().numpy()
+            flat_preds = np.argmax(logits, axis=-1).flatten()
+            flat_labels = labels.flatten()
+            accuracy += (np.sum(flat_preds == flat_labels)/len(flat_labels))/len(dataset)
+
+            loss += loss / len(dataset)
+            batch = None
+        return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
 
 class BERTTokenClassificationModel(BaseTokenClassficationModel):
     def __init__(self, config):
