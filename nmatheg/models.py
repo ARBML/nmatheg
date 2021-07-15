@@ -230,8 +230,8 @@ class BaseQuestionAnsweringModel:
                 start_logits = outputs.start_logits
                 end_logits = outputs.end_logits
 
-                all_start_logits.append(self.accelerator.gather(start_logits).detach().numpy())
-                all_end_logits.append(self.accelerator.gather(end_logits).detach().numpy())
+                all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
+                all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
                 
                 loss.backward()
                 self.optimizer.step()
