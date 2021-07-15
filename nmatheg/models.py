@@ -8,6 +8,7 @@ from torch.optim import AdamW
 from sklearn.metrics import accuracy_score
 import torch.nn as nn
 from accelerate import Accelerator
+import copy 
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels):
@@ -217,13 +218,18 @@ class BaseQuestionAnsweringModel:
 
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
+        
+        train_data_loader = copy.deepcopy(train_dataset)
+        train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
+        train_data_loader = torch.utils.data.DataLoader(train_dataset, batch_size=8)
+
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
             self.model.train().to(self.device)
             all_start_logits = []
             all_end_logits = []
-            for _, batch in enumerate(train_dataset):
+            for _, batch in enumerate(train_data_loader):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 loss = outputs['loss']
@@ -239,28 +245,25 @@ class BaseQuestionAnsweringModel:
 
                 loss += loss / len(train_dataset)
                 batch = None
-            # metric = evaluate_metric(train_dataset, train_examples, all_start_logits, all_end_logits)
-            # print(metric)
-            print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
+            train_metrics = self.evaluate_dataset(train_dataset, train_examples)
+            print(f"Epoch {epoch} Train Loss {loss:.4f} Train F1 {train_metrics['f1']:.4f}")
             
             self.model.eval().to(self.device)
-            results = self.evaluate_dataset(valid_dataset, valid_examples)
-            # print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+            valid_metrics = self.evaluate_dataset(valid_dataset, valid_examples)
+            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
-        #     val_accuracy = results['accuracy']
-        #     if val_accuracy > best_accuracy:
-        #         best_accuracy = val_accuracy
-        #         torch.save(self.model.state_dict(), filepath)
+            val_accuracy = valid_metrics['f1']
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
+                torch.save(self.model.state_dict(), filepath)
         
-        # self.model.load_state_dict(torch.load(filepath))
-        # self.model.eval()
-        # results = self.evaluate_dataset(test_dataset)
-        # print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
-        # return results
+        self.model.load_state_dict(torch.load(filepath))
+        self.model.eval()
+        test_metrics = self.evaluate_dataset(test_dataset, test_examples)
+        print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
         return {'loss':0., 'Accuracy':100.0}
         
     def evaluate_dataset(self, dataset, examples):
-        accuracy = 0
         loss = 0 
         all_start_logits = []
         all_end_logits = []
@@ -280,8 +283,7 @@ class BaseQuestionAnsweringModel:
             # loss += loss / len(dataset)
             # batch = None
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
-        print(metric)
-        return {'loss':0, 'accuracy':100}
+        return {'loss':0, 'f1':metric['f1'], 'exact_match':metric['exact_match']}
 
 class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):

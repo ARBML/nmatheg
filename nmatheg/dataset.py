@@ -94,7 +94,7 @@ def create_dataset(config, data_config):
         dataset['train'] = dataset['train'].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset['train'].column_names)
 
-        dataset['validation'] = dataset['validation'].map(lambda x: prepare_validation_features(x, tokenizer)
+        dataset['validation'] = dataset['validation'].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset['validation'].column_names)
 
         columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
@@ -103,11 +103,12 @@ def create_dataset(config, data_config):
     #create loaders
 
     if task_name == 'question_answering':
-        #TODO fix these 
-        for split in dataset:
-            if split == 'train':
-                dataset[split].set_format(type='torch', columns = columns)
-                dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+        # #TODO fix these 
+        # for split in dataset:
+        #     if split == 'train':
+        #         dataset[split].set_format(type='torch', columns = columns)
+        #         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+        pass 
     else: 
         dataset = split_dataset(dataset)
         examples = split_dataset(examples)
@@ -116,6 +117,5 @@ def create_dataset(config, data_config):
             dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
     if task_name == 'question_answering':
-        #TODO fix these 
         return [dataset['train'], dataset['validation'], dataset['validation']], [examples['train'], examples['validation'], examples['validation']]
     return [dataset['train'], dataset['valid'], dataset['test']]
