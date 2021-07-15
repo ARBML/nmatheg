@@ -17,19 +17,19 @@ def split_dataset(dataset, config, data_config, seed = 42):
     for i, split_name in enumerate(['train', 'valid', 'test']):
         if split_name in data_config[dataset_name]:
             split_names[i] = data_config[dataset_name][split_name]
+            dataset[split_name] = dataset[split_names[i]]
 
     #create validation split
-    if 'valid' not in data_config[dataset_name]:
+    if 'valid' not in dataset:
         train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
         dataset['valid'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
 
     #create training split 
-    if 'test' not in data_config[dataset_name]:
+    if 'test' not in dataset:
         train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
         dataset['test'] = train_valid_dataset.pop('test')
-        dataset['train'] = train_valid_dataset['train']
-    
+        dataset['train'] = train_valid_dataset['train']  
     return dataset 
 
 
@@ -64,7 +64,9 @@ def create_dataset(config, data_config):
     if task_name != 'question_answering':
         dataset = clean_dataset(dataset, config, data_config)
 
+    dataset = split_dataset(dataset, config, data_config)
     examples = copy.deepcopy(dataset)
+
     if task_name == 'text_classification':
         # tokenize data
         if 'bert' in model_name:
@@ -96,13 +98,10 @@ def create_dataset(config, data_config):
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         for split in dataset:
+          print(split)
           dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
-        
-
-    dataset = split_dataset(dataset)
-    examples = split_dataset(examples)
-
+   
     #create loaders 
     if task_name != 'question_answering': 
         for split in dataset:

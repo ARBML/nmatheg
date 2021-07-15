@@ -70,7 +70,7 @@ def prepare_features(examples, tokenizer):
                 tokenized_examples["end_positions"].append(token_end_index + 1)
 
 
-    sample_mapping = tokenized_examples.pop("overflow_to_sample_mapping")
+    # sample_mapping = tokenized_examples.pop("overflow_to_sample_mapping")
 
     # For evaluation, we will need to convert our predictions to substrings of the context, so we keep the
     # corresponding example_id and we will store the offset mappings.
