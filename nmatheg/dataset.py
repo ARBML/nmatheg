@@ -8,6 +8,7 @@ import torch
 from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 from .preprocess_qa import prepare_features
+import copy 
 
 def split_dataset(dataset, seed = 42):
     if not('test' in dataset):
@@ -56,8 +57,10 @@ def create_dataset(config, data_config):
 
     # clean and load data
     dataset = load_dataset(dataset_name)
-    # dataset = clean_dataset(dataset, config, data_config)
-    examples = dataset
+    if task_name != 'question_answering':
+        dataset = clean_dataset(dataset, config, data_config)
+
+    examples = copy.deepcopy(dataset)
     if task_name == 'text_classification':
         # tokenize data
         if 'bert' in model_name:
