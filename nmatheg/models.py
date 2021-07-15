@@ -239,13 +239,13 @@ class BaseQuestionAnsweringModel:
 
                 loss += loss / len(train_dataset)
                 batch = None
-            metric = evaluate_metric(train_dataset, train_examples, all_start_logits, all_end_logits)
-            print(metric)
+            # metric = evaluate_metric(train_dataset, train_examples, all_start_logits, all_end_logits)
+            # print(metric)
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
-        #     self.model.eval().to(self.device)
-        #     results = self.evaluate_dataset(valid_dataset)
-        #     print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+            self.model.eval().to(self.device)
+            results = self.evaluate_dataset(valid_dataset, valid_examples)
+            # print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
 
         #     val_accuracy = results['accuracy']
         #     if val_accuracy > best_accuracy:
@@ -259,22 +259,26 @@ class BaseQuestionAnsweringModel:
         # return results
         return {'loss':0., 'Accuracy':100.0}
         
-    def evaluate_dataset(self, dataset):
+    def evaluate_dataset(self, dataset, examples):
         accuracy = 0
         loss = 0 
+        all_start_logits = []
+        all_end_logits = []
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
             loss = outputs['loss']
-            labels = batch['labels'].detach().cpu().numpy() 
-            logits = outputs['logits'].detach().cpu().numpy()
-            flat_preds = np.argmax(logits, axis=-1).flatten()
-            flat_labels = labels.flatten()
-            accuracy += (np.sum(flat_preds == flat_labels)/len(flat_labels))/len(dataset)
+            start_logits = outputs.start_logits
+            end_logits = outputs.end_logits
 
+            all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
+            all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
+            
             loss += loss / len(dataset)
             batch = None
-        return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
+        metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
+        print(metric)
+        return {'loss':0, 'accuracy':100}
 
 class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):

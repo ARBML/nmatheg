@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
-from .preprocess_qa import prepare_features
+from .preprocess_qa import prepare_features, prepare_validation_features
 import copy 
 
 def split_dataset(dataset, seed = 42):
@@ -90,14 +90,16 @@ def create_dataset(config, data_config):
     elif task_name == 'question_answering':
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
-        for split in dataset:
-            dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
-                                                , batched=True, remove_columns=dataset[split].column_names)
+        dataset['train'] = dataset['train'].map(lambda x: prepare_features(x, tokenizer)
+                                                , batched=True, remove_columns=dataset['train'].column_names)
+
+        dataset['validation'] = dataset['validation'].map(lambda x: prepare_validation_features(x, tokenizer)
+                                                , batched=True, remove_columns=dataset['validation'].column_names)
 
         columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         
-    splits = split_dataset(dataset)
-    examples = split_dataset(examples)
+    # splits = split_dataset(dataset)
+    # examples = split_dataset(examples)
 
     #create loaders 
     for split in splits:
@@ -105,5 +107,5 @@ def create_dataset(config, data_config):
         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
     if task_name == 'question_answering':
-        return [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]
+        return [dataset['train'], dataset['validation'], dataset['validation']], [examples['train'], examples['validation'], examples['validation']]
     return [dataset['train'], dataset['valid'], dataset['test']]
