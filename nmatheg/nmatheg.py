@@ -56,6 +56,7 @@ class TrainStrategy:
     model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
     for row in output:
       dataset_name = row['dataset_name']
+      task_name = self.data_config[dataset_name]['task']
       if task_name == 'qa':
         metric = 'f1'
       else:
