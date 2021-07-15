@@ -32,6 +32,7 @@ def create_default_config():
         'epochs' : 1,
         'batch_size' : 8 
     }
+    return config 
 
 def create_configs(config, data_config):
     dataset_name = config['dataset']['dataset_name']
