@@ -21,7 +21,7 @@ def evaluate_metric(dataset, examples, all_start_logits, all_end_logits):
 
     outputs_numpy = (start_logits_concat, end_logits_concat)
     prediction = post_processing_function(examples, dataset, outputs_numpy)
-    return metric.compute(predictions=prediction.predictions, references=prediction.label_ids)
+    return metric.compute(predictions=prediction['predictions'], references=prediction['label_ids'])
 
 
 def post_processing_function(examples, features, predictions, stage="eval"):

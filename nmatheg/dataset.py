@@ -88,6 +88,7 @@ def create_dataset(config, data_config):
         columns=['input_ids', 'attention_mask', 'labels']
     
     elif task_name == 'question_answering':
+        #TODO fix these 
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         dataset['train'] = dataset['train'].map(lambda x: prepare_features(x, tokenizer)
@@ -98,14 +99,23 @@ def create_dataset(config, data_config):
 
         columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         
-    # dataset = split_dataset(dataset)
-    # examples = split_dataset(examples)
 
-    #create loaders 
-    for split in dataset:
-        dataset[split].set_format(type='torch', columns=columns)
-        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+    #create loaders
+
+    if task_name == 'question_answering':
+        #TODO fix these 
+        for split in dataset:
+            if split == 'train':
+                dataset[split].set_format(type='torch', columns = columns)
+                dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+    else: 
+        dataset = split_dataset(dataset)
+        examples = split_dataset(examples)
+        for split in dataset:
+            dataset[split].set_format(type='torch', columns=columns)
+            dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
     if task_name == 'question_answering':
+        #TODO fix these 
         return [dataset['train'], dataset['validation'], dataset['validation']], [examples['train'], examples['validation'], examples['validation']]
     return [dataset['train'], dataset['valid'], dataset['test']]

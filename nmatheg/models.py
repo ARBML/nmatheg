@@ -264,18 +264,21 @@ class BaseQuestionAnsweringModel:
         loss = 0 
         all_start_logits = []
         all_end_logits = []
-        for _, batch in enumerate(dataset):
+        data_loader = dataset.remove_columns(["example_id", "offset_mapping"])
+        data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+        data_loader = torch.utils.data.DataLoader(data_loader, batch_size=8)
+        for _, batch in enumerate(data_loader):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
-            loss = outputs['loss']
+            # loss = outputs['loss']
             start_logits = outputs.start_logits
             end_logits = outputs.end_logits
 
             all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
             all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
             
-            loss += loss / len(dataset)
-            batch = None
+            # loss += loss / len(dataset)
+            # batch = None
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
         print(metric)
         return {'loss':0, 'accuracy':100}
