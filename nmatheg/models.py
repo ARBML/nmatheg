@@ -81,9 +81,9 @@ class BaseTextClassficationModel:
         
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
-        results = self.evaluate_dataset(test_dataset)
-        print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
-        return results 
+        test_metrics = self.evaluate_dataset(test_dataset)
+        print(f"Test Loss {test_metrics['loss']:.4f} Test Accuracy {test_metrics['accuracy']:.4f}")
+        return {'accuracy':test_metrics['accuracy']} 
     
     def evaluate_dataset(self, dataset):
         accuracy = 0
@@ -170,9 +170,9 @@ class BaseTokenClassficationModel:
         
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
-        results = self.evaluate_dataset(test_dataset)
-        print(f"Test Loss {results['loss']:.4f} Test Accuracy {results['accuracy']:.4f}")
-        return results
+        test_metrics = self.evaluate_dataset(test_dataset)
+        print(f"Test Loss {test_metrics['loss']:.4f} Test Accuracy {test_metrics['accuracy']:.4f}")
+        return {'accuracy':test_metrics['accuracy']}
         
     def evaluate_dataset(self, dataset):
         accuracy = 0
@@ -264,7 +264,7 @@ class BaseQuestionAnsweringModel:
         self.model.eval()
         test_metrics = self.evaluate_dataset(test_dataset, test_examples)
         print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
-        return {'loss':test_metrics['loss'], 'f1':test_metrics['f1']}
+        return {'f1':test_metrics['f1'], 'Exact Match':test_metrics['exact_match']}
         
     def evaluate_dataset(self, dataset, examples):
         loss = 0 

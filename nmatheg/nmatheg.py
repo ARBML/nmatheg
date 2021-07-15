@@ -25,7 +25,8 @@ class TrainStrategy:
     model_names = self.config['model']['model_name'].split(',')
     dataset_names = self.config['dataset']['dataset_name'].split(',')
 
-    output = [] 
+    output = []
+    dataset_metrics = [] 
     for dataset_name in dataset_names:
       self.config['dataset']['dataset_name'] = dataset_name
       task_name = self.data_config[dataset_name]['task']
@@ -52,24 +53,26 @@ class TrainStrategy:
         else:
           results = self.model.train(self.datasets, **self.train_config) 
 
-        results['model_name'] = model_name
-        results['dataset_name'] = dataset_name 
-        output.append(results)
+        for metric_name in results:
+          dataset_metrics.append(dataset_name+metric_name)
+
+        output.append([model_name, dataset_name, results])
         self.model.wipe_memory()
     
-    model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
+    model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
+    metrics = []
+    dataset_names = []
     for row in output:
-      dataset_name = row['dataset_name']
+      model_name = row[0]
+      dataset_name = row[1]
       task_name = self.data_config[dataset_name]['task']
-      if task_name == 'qa':
-        metric = 'f1'
-      else:
-        metric = 'accuracy' 
-      
-      model_results[row['model_name']][dataset_names.index(dataset_name)] = round(row[metric]*100, 2)
-
+      for metric_name in results[2]: 
+        model_results[model_name][dataset_metrics.index(dataset_name+metric_name)] = round(row[metric_name]*100, 2)
+        metrics.append(metric_name) 
+        dataset_names.append(dataset_name) 
+    
     rows = []
     for model_name in model_results:
       rows.append([model_name]+model_results[model_name])
 
-    return pd.DataFrame(rows, columns = ['Model']+dataset_names)     
+    return pd.DataFrame(rows, columns = [dataset_names, metrics])     
