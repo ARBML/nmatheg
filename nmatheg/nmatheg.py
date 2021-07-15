@@ -20,30 +20,30 @@ class TrainStrategy:
   def start(self):
     model_names = self.config['model']['model_name'].split(',')
     dataset_names = self.config['dataset']['dataset_name'].split(',')
-    task_name = self.config['dataset']['task']
 
     output = [] 
     for dataset_name in dataset_names:
       self.config['dataset']['dataset_name'] = dataset_name
+      task_name = self.data_config[dataset_name]['task']
 
       for model_name in model_names:
         self.config['model']['model_name'] = model_name
         self.train_config, self.model_config = create_configs(self.config, self.data_config)
         self.datasets, self.examples = create_dataset(self.config, self.data_config)
         
-        if task_name == 'text_classification':
+        if task_name == 'cls':
           if 'bert' in model_name:
             self.model = BERTTextClassificationModel(self.model_config)
           else:
             self.model = SimpleClassificationModel(self.model_config)
 
-        elif task_name == 'token_classification':
+        elif task_name == 'ner':
           self.model = BERTTokenClassificationModel(self.model_config)
 
-        elif task_name == 'question_answering':
+        elif task_name == 'qa':
           self.model = BERTQuestionAnsweringModel(self.model_config)
 
-        if task_name == 'question_answering':
+        if task_name == 'qa':
           results = self.model.train(self.datasets, self.examples, **self.train_config) 
         else:
           results = self.model.train(self.datasets, **self.train_config) 
@@ -56,7 +56,7 @@ class TrainStrategy:
     model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
     for row in output:
       dataset_name = row['dataset_name']
-      if task_name == 'question_answering':
+      if task_name == 'qa':
         metric = 'f1'
       else:
         metric = 'accuracy' 
