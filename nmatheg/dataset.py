@@ -98,11 +98,11 @@ def create_dataset(config, data_config):
 
         columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         
-    # splits = split_dataset(dataset)
+    # dataset = split_dataset(dataset)
     # examples = split_dataset(examples)
 
     #create loaders 
-    for split in splits:
+    for split in dataset:
         dataset[split].set_format(type='torch', columns=columns)
         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
