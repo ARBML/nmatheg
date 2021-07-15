@@ -7,25 +7,29 @@ from transformers import AutoTokenizer
 import torch
 from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
-from .preprocess_qa import prepare_features, prepare_validation_features
+from .preprocess_qa import prepare_features
 import copy 
 
-def split_dataset(dataset, seed = 42):
-    if not('test' in dataset):
-        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
-        train_valid_dataset['valid'] = train_valid_dataset.pop('test')
+def split_dataset(dataset, config, data_config, seed = 42):
+    dataset_name = config['dataset']['dataset_name']
+    split_names = ['train', 'valid', 'test']
 
-        train_test_dataset = train_valid_dataset['train'].train_test_split(test_size=0.1, seed = seed)
-        
-        dataset['train'] = train_test_dataset['train']
-        dataset['test'] = train_test_dataset['test']
-        dataset['valid'] = train_valid_dataset['valid']
+    for i, split_name in enumerate(['train', 'valid', 'test']):
+        if split_name in data_config[dataset_name]:
+            split_names[i] = data_config[dataset_name][split_name]
 
-    elif not('valid' in dataset):
-        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
-        train_valid_dataset['valid'] = train_valid_dataset.pop('test')
+    #create validation split
+    if 'valid' not in data_config[dataset_name]:
+        train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
+        dataset['valid'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
-        dataset['valid'] = train_valid_dataset['valid']
+
+    #create training split 
+    if 'test' not in data_config[dataset_name]:
+        train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
+        dataset['test'] = train_valid_dataset.pop('test')
+        dataset['train'] = train_valid_dataset['train']
+    
     return dataset 
 
 
@@ -91,31 +95,18 @@ def create_dataset(config, data_config):
         #TODO fix these 
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
-        dataset['train'] = dataset['train'].map(lambda x: prepare_features(x, tokenizer)
-                                                , batched=True, remove_columns=dataset['train'].column_names)
-
-        dataset['validation'] = dataset['validation'].map(lambda x: prepare_features(x, tokenizer)
-                                                , batched=True, remove_columns=dataset['validation'].column_names)
-
-        columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
+        for split in dataset:
+          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
+                                                , batched=True, remove_columns=dataset[split].column_names)
         
 
-    #create loaders
+    dataset = split_dataset(dataset)
+    examples = split_dataset(examples)
 
-    if task_name == 'question_answering':
-        # #TODO fix these 
-        # for split in dataset:
-        #     if split == 'train':
-        #         dataset[split].set_format(type='torch', columns = columns)
-        #         dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
-        pass 
-    else: 
-        dataset = split_dataset(dataset)
-        examples = split_dataset(examples)
+    #create loaders 
+    if task_name != 'question_answering': 
         for split in dataset:
             dataset[split].set_format(type='torch', columns=columns)
             dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
-    if task_name == 'question_answering':
-        return [dataset['train'], dataset['validation'], dataset['validation']], [examples['train'], examples['validation'], examples['validation']]
-    return [dataset['train'], dataset['valid'], dataset['test']]
+    return [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]

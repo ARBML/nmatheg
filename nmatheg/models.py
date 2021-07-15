@@ -219,9 +219,12 @@ class BaseQuestionAnsweringModel:
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
         
-        train_data_loader = copy.deepcopy(train_dataset)
+        train_data_loader = train_dataset.remove_columns(["example_id", "offset_mapping"])
+        # train_data_loader = copy.deepcopy(train_dataset)
         train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
-        train_data_loader = torch.utils.data.DataLoader(train_dataset, batch_size=8)
+        # print(train_data_loader[0])
+        # raise('error')
+        train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=8)
 
         for epoch in range(epochs):
             accuracy = 0 
@@ -268,22 +271,22 @@ class BaseQuestionAnsweringModel:
         all_start_logits = []
         all_end_logits = []
         data_loader = dataset.remove_columns(["example_id", "offset_mapping"])
-        data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+        data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
         data_loader = torch.utils.data.DataLoader(data_loader, batch_size=8)
         for _, batch in enumerate(data_loader):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
-            # loss = outputs['loss']
+            loss = outputs['loss']
             start_logits = outputs.start_logits
             end_logits = outputs.end_logits
 
             all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
             all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
             
-            # loss += loss / len(dataset)
-            # batch = None
+            loss += loss / len(dataset)
+            batch = None
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
-        return {'loss':0, 'f1':metric['f1'], 'exact_match':metric['exact_match']}
+        return {'loss':loss, 'f1':metric['f1'], 'exact_match':metric['exact_match']}
 
 class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):
