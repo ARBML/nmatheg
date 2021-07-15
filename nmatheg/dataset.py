@@ -67,7 +67,7 @@ def create_dataset(config, data_config):
     dataset = split_dataset(dataset, config, data_config)
     examples = copy.deepcopy(dataset)
 
-    if task_name == 'qa':
+    if task_name == 'cls':
         # tokenize data
         if 'bert' in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
