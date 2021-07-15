@@ -21,13 +21,13 @@ def split_dataset(dataset, config, data_config, seed = 42):
 
     #create validation split
     if 'valid' not in dataset:
-        train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
+        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
         dataset['valid'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
 
     #create training split 
     if 'test' not in dataset:
-        train_valid_dataset = dataset[split_names[0]].train_test_split(test_size=0.1, seed = seed)
+        train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
         dataset['test'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']  
     return dataset 
@@ -94,11 +94,9 @@ def create_dataset(config, data_config):
         columns=['input_ids', 'attention_mask', 'labels']
     
     elif task_name == 'question_answering':
-        #TODO fix these 
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         for split in dataset:
-          print(split)
           dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
    

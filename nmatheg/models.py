@@ -264,7 +264,7 @@ class BaseQuestionAnsweringModel:
         self.model.eval()
         test_metrics = self.evaluate_dataset(test_dataset, test_examples)
         print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
-        return {'loss':0., 'Accuracy':100.0}
+        return {'loss':test_metrics['loss'], 'f1':test_metrics['f1']}
         
     def evaluate_dataset(self, dataset, examples):
         loss = 0 
@@ -286,7 +286,7 @@ class BaseQuestionAnsweringModel:
             loss += loss / len(dataset)
             batch = None
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
-        return {'loss':loss, 'f1':metric['f1'], 'exact_match':metric['exact_match']}
+        return {'loss':loss, 'f1':metric['f1']/100, 'exact_match':metric['exact_match']/100}
 
 class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):

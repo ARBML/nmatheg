@@ -43,7 +43,11 @@ class TrainStrategy:
         elif task_name == 'question_answering':
           self.model = BERTQuestionAnsweringModel(self.model_config)
 
-        results = self.model.train(self.datasets, self.examples, **self.train_config) 
+        if task_name == 'question_answering':
+          results = self.model.train(self.datasets, self.examples, **self.train_config) 
+        else:
+          results = self.model.train(self.datasets, **self.train_config) 
+
         results['model_name'] = model_name
         results['dataset_name'] = dataset_name 
         output.append(results)
@@ -52,7 +56,12 @@ class TrainStrategy:
     model_results = {model_name:[0]*len(dataset_names) for model_name in model_names}
     for row in output:
       dataset_name = row['dataset_name']
-      model_results[row['model_name']][dataset_names.index(dataset_name)] = round(row['accuracy']*100, 2)
+      if task_name == 'question_answering':
+        metric = 'f1'
+      else:
+        metric = 'accuracy' 
+      
+      model_results[row['model_name']][dataset_names.index(dataset_name)] = round(row[metric]*100, 2)
 
     rows = []
     for model_name in model_results:
