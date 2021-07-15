@@ -2,15 +2,19 @@
 import os 
 from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel,BERTQuestionAnsweringModel
-from .configs import create_configs
+from .configs import create_configs, create_default_config
 import pandas as pd
 import configparser
 
 class TrainStrategy:
-  def __init__(self, config_path):
-
-    self.config = configparser.ConfigParser()
-    self.config.read(config_path)
+  def __init__(self, config_path = None, datasets = '', models = ''):
+    if config_path == None:
+      self.config = create_default_config()
+      self.config['dataset'] = {'dataset_name' : datasets}
+      self.config['model'] = {'model_name' : models}
+    else:
+      self.config = configparser.ConfigParser()
+      self.config.read(config_path)
 
     self.data_config = configparser.ConfigParser()
     rel_path = os.path.dirname(__file__)
