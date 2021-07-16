@@ -70,7 +70,7 @@ strategy.start()
 import nmatheg as nm
 strategy = nm.TrainStrategy(
     datasets = 'arsentd_lev,arcd,caner', 
-    models = 'qarib/bert-base-qarib,aubmindlab/bert-base-arabert01'
+    models   = 'qarib/bert-base-qarib,aubmindlab/bert-base-arabertv01'
 )
 strategy.start()
 ```
