@@ -47,7 +47,7 @@ class BaseTextClassficationModel:
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    def train(self, datasets, epochs = 30, save_dir = '.'):
+    def train(self, datasets, epochs = 30, batch_size =8, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets 
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
@@ -154,7 +154,7 @@ class BaseTokenClassficationModel:
                 loss += loss / len(train_dataset)
                 batch = None
 
-            train_metrics = self.evaluate_dataset(self, train_dataset) 
+            train_metrics = self.evaluate_dataset(train_dataset) 
             print(f"Epoch {epoch} Valid Loss {train_metrics['loss']:.4f} Valid F1 {train_metrics['f1']:.4f}")
             
             self.model.eval().to(self.device)
