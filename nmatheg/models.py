@@ -8,7 +8,9 @@ from torch.optim import AdamW
 from sklearn.metrics import accuracy_score
 import torch.nn as nn
 from accelerate import Accelerator
+from datasets import load_metric
 import copy 
+from ner_utils import get_labels
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels):
@@ -129,9 +131,9 @@ class BaseTokenClassficationModel:
         self.num_labels = config['num_labels']
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
-
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
+        self.metric  = load_metric("seqeval")
+        self.accelerator = Accelerator()
     def train(self, datasets, epochs = 30, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets 
         filepath = os.path.join(save_dir, 'model.pth')
@@ -181,15 +183,28 @@ class BaseTokenClassficationModel:
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
             loss = outputs['loss']
-            labels = batch['labels'].detach().cpu().numpy() 
-            logits = outputs['logits'].detach().cpu().numpy()
-            flat_preds = np.argmax(logits, axis=-1).flatten()
-            flat_labels = labels.flatten()
-            accuracy += (np.sum(flat_preds == flat_labels)/len(flat_labels))/len(dataset)
+            labels = batch['labels']
+            predictions = outputs['logits'].argmax(dim=-1)
+            
+            predictions_gathered = self.accelerator.gather(predictions)
+            labels_gathered = self.accelerator.gather(labels)
+            preds, refs = get_labels(predictions_gathered, labels_gathered)
+            self.metric.add_batch(
+                predictions=preds,
+                references=refs,
+            )
 
             loss += loss / len(dataset)
             batch = None
-        return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
+        results = self.metric.compute()
+
+        return {
+                    "loss":float(loss.cpu().detach().numpy()),
+                    "precision": results["overall_precision"],
+                    "recall": results["overall_recall"],
+                    "f1": results["overall_f1"],
+                    "accuracy": results["overall_accuracy"],
+                }
 
 class BERTTokenClassificationModel(BaseTokenClassficationModel):
     def __init__(self, config):
