@@ -18,7 +18,6 @@ Setup a config file for the training strategy.
 
 ``` ini
 dataset_name = ajgt_twitter_ar
-task = classification 
 
 [preprocessing]
 segment = False
@@ -59,9 +58,20 @@ batch_size = 256
 - `train` the training parameters like number of epochs and batch size. 
 
 ## Usage 
+
+### Config Files
 ```python
 import nmatheg as nm
 strategy = nm.TrainStrategy('config.ini')
+strategy.start()
+```
+### Benchmarking on multiple datasets and models 
+```python
+import nmatheg as nm
+strategy = nm.TrainStrategy(
+    datasets = 'arsentd_lev,arcd,caner', 
+    models = 'qarib/bert-base-qarib,aubmindlab/bert-base-arabert01'
+)
 strategy.start()
 ```
 
@@ -78,10 +88,12 @@ We are supporting huggingface datasets for Arabic. You can find the supported da
 |[oclar](https://huggingface.co/datasets/oclar)|The researchers of OCLAR Marwan et al. (2019), they gathered Arabic costumer reviews Zomato [website](https://www.zomato.com/lebanon) on wide scope of domain, including restaurants, hotels, hospitals, local shops, etc. The corpus finally contains 3916 reviews in 5-rating scale. For this research purpose, the positive class considers rating stars from 5 to 3 of 3465 reviews, and the negative class is represented from values of 1 and 2 of about 451 texts.|
 |[emotone_ar](https://huggingface.co/datasets/emotone_ar)|Dataset of 10,065 tweets in Arabic for Emotion detection in Arabic text|
 |[hard](https://huggingface.co/datasets/hard)|This dataset contains 93,700 hotel reviews in Arabic language.The hotel reviews were collected from Booking.com website during June/July 2016.The reviews are expressed in Modern Standard Arabic as well as dialectal Arabic.The following table summarize some tatistics on the HARD Dataset.|
+|[caner](https://huggingface.co/datasets/caner)|The Classical Arabic Named Entity Recognition corpus is a new corpus of tagged data that can be useful for handling the issues in recognition of Arabic named entities.|
+|[arcd](https://huggingface.co/datasets/arcd)|Arabic Reading Comprehension Dataset (ARCD) composed of 1,395 questions posed by crowdworkers on Wikipedia articles.|
 
 ## Tasks 
 
-Currently only supporting classification tasks using bidirectional GRUs. We also support more complicated mechanisms like BERT fine-tuning. 
+Currently we support text classification, named entity recognition and question answering. 
 
 ## Demo 
 Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/blob/main/demo.ipynb) for a quick demo. 
