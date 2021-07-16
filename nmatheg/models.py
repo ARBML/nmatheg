@@ -171,10 +171,10 @@ class BaseTokenClassficationModel:
         test_metrics = self.evaluate_dataset(test_dataset)
         print(f"Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
         return {
-                    "precision": test_metrics["overall_precision"],
-                    "recall": test_metrics["overall_recall"],
-                    "f1": test_metrics["overall_f1"],
-                    "accuracy": test_metrics["overall_accuracy"],
+                    "precision": test_metrics["precision"],
+                    "recall": test_metrics["recall"],
+                    "f1": test_metrics["f1"],
+                    "accuracy": test_metrics["accuracy"],
                 }
         
     def evaluate_dataset(self, dataset):
