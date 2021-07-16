@@ -4,3 +4,4 @@ tfds-nightly
 datasets
 transformers
 accelerate
+seqeval

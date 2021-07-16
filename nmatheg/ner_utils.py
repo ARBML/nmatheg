@@ -6,11 +6,11 @@ def get_labels(predictions, references):
 
     # Remove ignored index (special tokens)
     true_predictions = [
-        [p for (p, l) in zip(pred, gold_label) if l != -100]
+        [str(p) for (p, l) in zip(pred, gold_label) if l != -100]
         for pred, gold_label in zip(y_pred, y_true)
     ]
     true_labels = [
-        [l for (p, l) in zip(pred, gold_label) if l != -100]
+        [str(l) for (p, l) in zip(pred, gold_label) if l != -100]
         for pred, gold_label in zip(y_pred, y_true)
     ]
     return true_predictions, true_labels

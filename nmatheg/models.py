@@ -10,7 +10,7 @@ import torch.nn as nn
 from accelerate import Accelerator
 from datasets import load_metric
 import copy 
-from ner_utils import get_labels
+from .ner_utils import get_labels
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels):
