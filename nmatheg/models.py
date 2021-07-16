@@ -134,7 +134,8 @@ class BaseTokenClassficationModel:
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.metric  = load_metric("seqeval")
         self.accelerator = Accelerator()
-    def train(self, datasets, epochs = 30, save_dir = '.'):
+
+    def train(self, datasets, epochs = 30, batch_size = 8, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets 
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
@@ -150,22 +151,17 @@ class BaseTokenClassficationModel:
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-
-                labels = batch['labels'].detach().cpu().numpy() 
-                logits = outputs['logits'].detach().cpu().numpy()
-                flat_preds = np.argmax(logits, axis=-1).flatten()
-                flat_labels = labels.flatten()
-                accuracy += (np.sum(flat_preds == flat_labels)/len(flat_labels))/len(train_dataset)
-
                 loss += loss / len(train_dataset)
-                batch = None 
-            print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
+                batch = None
+
+            train_metrics = self.evaluate_dataset(self, train_dataset) 
+            print(f"Epoch {epoch} Valid Loss {train_metrics['loss']:.4f} Valid F1 {train_metrics['f1']:.4f}")
             
             self.model.eval().to(self.device)
-            results = self.evaluate_dataset(valid_dataset)
-            print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
+            valid_metrics = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
-            val_accuracy = results['accuracy']
+            val_accuracy = valid_metrics['f1']
             if val_accuracy > best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
@@ -173,7 +169,7 @@ class BaseTokenClassficationModel:
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
         test_metrics = self.evaluate_dataset(test_dataset)
-        print(f"Test Loss {test_metrics['loss']:.4f} Test Accuracy {test_metrics['accuracy']:.4f}")
+        print(f"Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
         return {'accuracy':test_metrics['accuracy']}
         
     def evaluate_dataset(self, dataset):
