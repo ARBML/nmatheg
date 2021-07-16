@@ -212,7 +212,7 @@ class BaseQuestionAnsweringModel:
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.accelerator = Accelerator()
-    def train(self, datasets, examples, epochs = 30, save_dir = '.'):
+    def train(self, datasets, examples, epochs = 30, batch_size = 8, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets
         train_examples, valid_examples, test_examples = examples
 
@@ -220,11 +220,9 @@ class BaseQuestionAnsweringModel:
         best_accuracy = 0 
         
         train_data_loader = train_dataset.remove_columns(["example_id", "offset_mapping"])
-        # train_data_loader = copy.deepcopy(train_dataset)
         train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
-        # print(train_data_loader[0])
-        # raise('error')
-        train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=8)
+
+        train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=batch_size)
 
         for epoch in range(epochs):
             accuracy = 0 
@@ -248,11 +246,11 @@ class BaseQuestionAnsweringModel:
 
                 loss += loss / len(train_dataset)
                 batch = None
-            train_metrics = self.evaluate_dataset(train_dataset, train_examples)
+            train_metrics = self.evaluate_dataset(train_dataset, train_examples, batch_size=batch_size)
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train F1 {train_metrics['f1']:.4f}")
             
             self.model.eval().to(self.device)
-            valid_metrics = self.evaluate_dataset(valid_dataset, valid_examples)
+            valid_metrics = self.evaluate_dataset(valid_dataset, valid_examples, batch_size=batch_size)
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
             val_accuracy = valid_metrics['f1']
@@ -262,17 +260,17 @@ class BaseQuestionAnsweringModel:
         
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
-        test_metrics = self.evaluate_dataset(test_dataset, test_examples)
+        test_metrics = self.evaluate_dataset(test_dataset, test_examples, batch_size=batch_size)
         print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
         return {'f1':test_metrics['f1'], 'Exact Match':test_metrics['exact_match']}
         
-    def evaluate_dataset(self, dataset, examples):
+    def evaluate_dataset(self, dataset, examples, batch_size = 8):
         loss = 0 
         all_start_logits = []
         all_end_logits = []
         data_loader = dataset.remove_columns(["example_id", "offset_mapping"])
         data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
-        data_loader = torch.utils.data.DataLoader(data_loader, batch_size=8)
+        data_loader = torch.utils.data.DataLoader(data_loader, batch_size=batch_size)
         for _, batch in enumerate(data_loader):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)

@@ -37,7 +37,8 @@ def create_default_config():
 def create_configs(config, data_config):
     dataset_name = config['dataset']['dataset_name']
     train_config = {'epochs':int(config['train']['epochs']),
-                    'save_dir':config['train']['save_dir']}
+                    'save_dir':config['train']['save_dir'],
+                    'batch_size':int(config['train']['batch_size'])}
 
     model_config = {'model_name':config['model']['model_name'],
                     'vocab_size':int(config['tokenization']['vocab_size']),
