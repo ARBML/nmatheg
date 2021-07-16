@@ -30,7 +30,7 @@ def create_default_config():
     config['train'] = {
         'save_dir' : '.',
         'epochs' : 5,
-        'batch_size' : 8 
+        'batch_size' : 4 
     }
     return config 
 
