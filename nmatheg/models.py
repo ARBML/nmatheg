@@ -127,7 +127,7 @@ class BERTTextClassificationModel(BaseTextClassficationModel):
         BaseTextClassficationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters())
+        self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
     
     def wipe_memory(self):
         self.model = None  

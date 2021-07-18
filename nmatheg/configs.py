@@ -1,5 +1,5 @@
 import configparser
-def create_default_config():
+def create_default_config(batch_size = 4, epochs = 5):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -29,8 +29,8 @@ def create_default_config():
 
     config['train'] = {
         'save_dir' : '.',
-        'epochs' : 5,
-        'batch_size' : 4 
+        'epochs' : epochs,
+        'batch_size' : batch_size 
     }
     return config 
 

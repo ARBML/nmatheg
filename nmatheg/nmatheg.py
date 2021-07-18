@@ -7,9 +7,9 @@ import pandas as pd
 import configparser
 
 class TrainStrategy:
-  def __init__(self, config_path = None, datasets = '', models = ''):
+  def __init__(self, config_path = None, datasets = '', models = '', **kwargs):
     if config_path == None:
-      self.config = create_default_config()
+      self.config = create_default_config(**kwargs)
       self.config['dataset'] = {'dataset_name' : datasets}
       self.config['model'] = {'model_name' : models}
     else:
