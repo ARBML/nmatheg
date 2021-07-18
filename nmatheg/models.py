@@ -1,4 +1,9 @@
-from transformers import AutoModelForSequenceClassification, AutoConfig, AutoModelForTokenClassification, AutoModelForQuestionAnswering
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoConfig,
+    AutoModelForTokenClassification,
+    AutoModelForQuestionAnswering,
+    get_linear_schedule_with_warmup)
 import os
 import time
 import numpy as np
@@ -49,6 +54,7 @@ class BaseTextClassficationModel:
 
     def train(self, datasets, epochs = 30, batch_size =8, save_dir = '.'):
         train_dataset, valid_dataset, test_dataset = datasets 
+        self.scheduler = get_linear_schedule_with_warmup(self.optimizer, num_training_steps=len(train_dataset)//epochs)
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
         for epoch in range(epochs):
@@ -61,6 +67,7 @@ class BaseTextClassficationModel:
                 loss = outputs['loss']
                 loss.backward()
                 self.optimizer.step()
+                self.scheduler.step()  
                 self.optimizer.zero_grad()
 
                 labels = batch['labels'].cpu() 
@@ -106,7 +113,7 @@ class SimpleClassificationModel(BaseTextClassficationModel):
         BaseTextClassficationModel.__init__(self, config)
         self.model = BiRNN(self.vocab_size, self.num_labels)
         self.model.to(self.device)    
-        self.optimizer = AdamW(self.model.parameters())
+        self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 
     def wipe_memory(self):
         self.model = None  
