@@ -48,10 +48,7 @@ class TrainStrategy:
         elif task_name == 'qa':
           self.model = BERTQuestionAnsweringModel(self.model_config)
 
-        if task_name == 'qa':
-          results = self.model.train(self.datasets, self.examples, **self.train_config) 
-        else:
-          results = self.model.train(self.datasets, **self.train_config) 
+        results = self.model.train(self.datasets, self.examples, **self.train_config) 
 
         for metric_name in results:
           if model_name == model_names[0]:

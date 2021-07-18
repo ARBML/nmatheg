@@ -52,8 +52,14 @@ class BaseTextClassficationModel:
 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    def train(self, datasets, epochs = 30, batch_size =8, save_dir = '.'):
+    def train(self, datasets, examples, **kwargs):
+        save_dir = kwargs['save_dir']
+        epochs = kwargs['save_dir']
+        lr = kwargs['lr']
+
         train_dataset, valid_dataset, test_dataset = datasets 
+
+        self.optimizer = AdamW(self.model.parameters(), lr = lr)
         self.scheduler = get_linear_schedule_with_warmup(self.optimizer,
                                                         num_warmup_steps = 0,
                                                         num_training_steps=len(train_dataset)//epochs)
@@ -127,7 +133,6 @@ class BERTTextClassificationModel(BaseTextClassficationModel):
         BaseTextClassficationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
     
     def wipe_memory(self):
         self.model = None  
@@ -144,7 +149,12 @@ class BaseTokenClassficationModel:
         self.metric  = load_metric("seqeval")
         self.accelerator = Accelerator()
 
-    def train(self, datasets, epochs = 30, batch_size = 8, save_dir = '.'):
+    def train(self, datasets, examples, **kwargs):
+        save_dir = kwargs['save_dir']
+        epochs = kwargs['save_dir']
+        lr = kwargs['lr']
+        self.optimizer = AdamW(self.model.parameters(), lr = lr)
+
         train_dataset, valid_dataset, test_dataset = datasets 
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
@@ -221,7 +231,6 @@ class BERTTokenClassificationModel(BaseTokenClassficationModel):
         BaseTokenClassficationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForTokenClassification.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters())
     
     def wipe_memory(self):
         self.model = None  
@@ -234,10 +243,16 @@ class BaseQuestionAnsweringModel:
         self.model = nn.Module()
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
-
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.accelerator = Accelerator()
-    def train(self, datasets, examples, epochs = 30, batch_size = 8, save_dir = '.'):
+
+    def train(self, datasets, examples, **kwargs):
+        save_dir = kwargs['save_dir']
+        epochs = kwargs['save_dir']
+        lr = kwargs['lr']
+        batch_size = kwargs['batch_size']
+        self.optimizer = AdamW(self.model.parameters(), lr = lr)
+
         train_dataset, valid_dataset, test_dataset = datasets
         train_examples, valid_examples, test_examples = examples
 
@@ -316,7 +331,6 @@ class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
         BaseQuestionAnsweringModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForQuestionAnswering.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters())
     
     def wipe_memory(self):
         self.model = None  
