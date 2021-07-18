@@ -54,7 +54,7 @@ class BaseTextClassficationModel:
 
     def train(self, datasets, examples, **kwargs):
         save_dir = kwargs['save_dir']
-        epochs = kwargs['save_dir']
+        epochs = kwargs['epochs']
         lr = kwargs['lr']
 
         train_dataset, valid_dataset, test_dataset = datasets 
@@ -151,7 +151,7 @@ class BaseTokenClassficationModel:
 
     def train(self, datasets, examples, **kwargs):
         save_dir = kwargs['save_dir']
-        epochs = kwargs['save_dir']
+        epochs = kwargs['epochs']
         lr = kwargs['lr']
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
 
@@ -248,7 +248,7 @@ class BaseQuestionAnsweringModel:
 
     def train(self, datasets, examples, **kwargs):
         save_dir = kwargs['save_dir']
-        epochs = kwargs['save_dir']
+        epochs = kwargs['epochs']
         lr = kwargs['lr']
         batch_size = kwargs['batch_size']
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
