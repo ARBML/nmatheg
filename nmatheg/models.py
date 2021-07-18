@@ -106,7 +106,7 @@ class SimpleClassificationModel(BaseTextClassficationModel):
         BaseTextClassficationModel.__init__(self, config)
         self.model = BiRNN(self.vocab_size, self.num_labels)
         self.model.to(self.device)    
-        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+        self.optimizer = AdamW(self.model.parameters())
 
     def wipe_memory(self):
         self.model = None  
@@ -118,7 +118,7 @@ class BERTTextClassificationModel(BaseTextClassficationModel):
         BaseTextClassficationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+        self.optimizer = AdamW(self.model.parameters())
     
     def wipe_memory(self):
         self.model = None  
@@ -212,7 +212,7 @@ class BERTTokenClassificationModel(BaseTokenClassficationModel):
         BaseTokenClassficationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name,num_labels=self.num_labels)
         self.model = AutoModelForTokenClassification.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+        self.optimizer = AdamW(self.model.parameters())
     
     def wipe_memory(self):
         self.model = None  
@@ -307,7 +307,7 @@ class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
         BaseQuestionAnsweringModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForQuestionAnswering.from_pretrained(self.model_name, config = config)
-        self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
+        self.optimizer = AdamW(self.model.parameters())
     
     def wipe_memory(self):
         self.model = None  
