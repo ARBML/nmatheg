@@ -22,8 +22,8 @@ class TrainStrategy:
     self.data_config.read(data_ini_path)
 
   def start(self):
-    model_names = self.config['model']['model_name'].split(',')
-    dataset_names = self.config['dataset']['dataset_name'].split(',')
+    model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
+    dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
 
     output = []
     dataset_metrics = [] 
@@ -38,7 +38,7 @@ class TrainStrategy:
         
         if task_name == 'cls':
           self.model = BERTTextClassificationModel(self.model_config)
-          
+
         elif task_name == 'ner':
           self.model = BERTTokenClassificationModel(self.model_config)
 
