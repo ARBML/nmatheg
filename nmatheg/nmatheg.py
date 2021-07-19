@@ -37,11 +37,8 @@ class TrainStrategy:
         self.datasets, self.examples = create_dataset(self.config, self.data_config)
         
         if task_name == 'cls':
-          if 'bert' in model_name:
-            self.model = BERTTextClassificationModel(self.model_config)
-          else:
-            self.model = SimpleClassificationModel(self.model_config)
-
+          self.model = BERTTextClassificationModel(self.model_config)
+          
         elif task_name == 'ner':
           self.model = BERTTokenClassificationModel(self.model_config)
 
