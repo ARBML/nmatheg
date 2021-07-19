@@ -75,7 +75,7 @@ class BaseTextClassficationModel:
                 loss = outputs['loss']
                 loss.backward()
                 self.optimizer.step()
-                self.scheduler.step()  
+                # self.scheduler.step()  
                 self.optimizer.zero_grad()
 
                 labels = batch['labels'].cpu() 
