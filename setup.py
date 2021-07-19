@@ -8,7 +8,7 @@ with open('README.md') as readme_file:
     readme = readme_file.read()
 
 setup(name='nmatheg',
-      version='0.0.3',
+      version='0.0.4',
       url='',
       discription="Arabic Training Strategy For NLP Models",
       long_description=readme,
