@@ -17,6 +17,7 @@ nmatheg `نماذج` an easy straregy for training Arabic NLP models on huggingf
 Setup a config file for the training strategy. 
 
 ``` ini
+[dataset]
 dataset_name = ajgt_twitter_ar
 
 [preprocessing]
