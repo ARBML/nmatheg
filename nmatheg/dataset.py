@@ -60,7 +60,8 @@ def create_dataset(config, data_config):
     task_name = data_config[dataset_name]['task']
 
     # clean and load data
-    dataset = load_dataset(dataset_name)
+    load_dataset_kwargs = config['load_dataset_kwargs']
+    dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
 
