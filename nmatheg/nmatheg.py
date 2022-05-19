@@ -8,6 +8,7 @@ import configparser
 
 class TrainStrategy:
   def __init__(self, config_path = None, datasets = '', models = '', **kwargs):
+    print('here')
     if config_path == None:
       self.config = create_default_config(**kwargs)
       self.config['dataset'] = {'dataset_name' : datasets}
@@ -37,7 +38,10 @@ class TrainStrategy:
         self.datasets, self.examples = create_dataset(self.config, self.data_config)
         
         if task_name == 'cls':
-          self.model = BERTTextClassificationModel(self.model_config)
+          if 'bert' in model_name:
+            self.model = BERTTextClassificationModel(self.model_config)
+          else:
+            self.model = SimpleClassificationModel(self.model_config)
 
         elif task_name == 'ner':
           self.model = BERTTokenClassificationModel(self.model_config)
