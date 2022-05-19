@@ -23,7 +23,10 @@ class BiRNN(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, 128)
-        self.bigru = nn.GRU(128, 256, bidirectional=True)
+        self.bigru1 = nn.GRU(128, 128, bidirectional=True)
+        self.bigru2 = nn.GRU(256, 128, bidirectional=True)
+        self.bigru3 = nn.GRU(256, 128, bidirectional=True)
+        self.bigru4 = nn.GRU(256, 256, bidirectional=True)
         self.fc = nn.Linear(512, num_labels)
         self.num_labels = num_labels
         
@@ -32,8 +35,11 @@ class BiRNN(nn.Module):
                 labels):
 
         embedded = self.embedding(input_ids)        
-        out = self.bigru(embedded)
-        logits = self.fc(out[0][:,0,:])
+        out,h = self.bigru1(embedded)
+        out,h = self.bigru2(out)
+        out,h = self.bigru3(out)
+        out,h = self.bigru4(out)
+        logits = self.fc(out[:, -1, :])
         loss = self.compute_loss(logits, labels)
         return {'loss':loss,
                 'logits':logits} 
@@ -120,8 +126,8 @@ class SimpleClassificationModel(BaseTextClassficationModel):
     def __init__(self, config):
         BaseTextClassficationModel.__init__(self, config)
         self.model = BiRNN(self.vocab_size, self.num_labels)
-        self.model.to(self.device)    
-        self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
+        self.model.to(self.device)  
+        # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 
     def wipe_memory(self):
         self.model = None  
