@@ -70,17 +70,17 @@ def create_dataset(config, data_config):
 
     if task_name == 'cls':
         # tokenize data
-        # if 'bert' in model_name:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-        dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
-        columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
-        # else:
-        #     write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
-        #     tokenizer = get_tokenizer(tokenizer_name)
-        #     tokenizer = tokenizer(vocab_size = vocab_size)
-        #     tokenizer.train('data.txt')
-        #     dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
-        #     columns=['input_ids', 'labels'] 
+        if 'bert' in model_name:
+          tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
+          dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
+          columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+        else:
+            write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+            tokenizer = get_tokenizer(tokenizer_name)
+            tokenizer = tokenizer(vocab_size = vocab_size)
+            tokenizer.train('data.txt')
+            dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
+            columns=['input_ids', 'labels'] 
         
         dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
 
