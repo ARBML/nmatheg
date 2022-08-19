@@ -30,7 +30,7 @@ class TrainStrategy:
     dataset_metrics = []
 
     for dataset_name in dataset_names:
-      for run in runs: 
+      for run in range(runs): 
         self.config['dataset']['dataset_name'] = dataset_name
         task_name = self.data_config[dataset_name]['task']
 
