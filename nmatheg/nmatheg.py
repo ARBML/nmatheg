@@ -25,37 +25,40 @@ class TrainStrategy:
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
-
+    runs = int(self.config['train']['runs'])
     output = []
-    dataset_metrics = [] 
+    dataset_metrics = []
+
     for dataset_name in dataset_names:
-      self.config['dataset']['dataset_name'] = dataset_name
-      task_name = self.data_config[dataset_name]['task']
+      for run in runs: 
+        self.config['dataset']['dataset_name'] = dataset_name
+        task_name = self.data_config[dataset_name]['task']
 
-      for model_name in model_names:
-        self.config['model']['model_name'] = model_name
-        self.train_config, self.model_config = create_configs(self.config, self.data_config)
-        self.datasets, self.examples = create_dataset(self.config, self.data_config)
-        
-        if task_name == 'cls':
-          if 'bert' in model_name:
-            self.model = BERTTextClassificationModel(self.model_config)
-          else:
-            self.model = SimpleClassificationModel(self.model_config)
+        for model_name in model_names:
+          self.config['model']['model_name'] = model_name
+          self.train_config, self.model_config = create_configs(self.config, self.data_config)
+          self.datasets, self.examples = create_dataset(self.config, self.data_config)
+          
+          if task_name == 'cls':
+            if 'bert' in model_name:
+              self.model = BERTTextClassificationModel(self.model_config)
+            elif 'birnn' in model_name:
+              self.model = SimpleClassificationModel(self.model_config)
+            else:
+              raise('error not recognized model name')
+          elif task_name == 'ner':
+            self.model = BERTTokenClassificationModel(self.model_config)
 
-        elif task_name == 'ner':
-          self.model = BERTTokenClassificationModel(self.model_config)
+          elif task_name == 'qa':
+            self.model = BERTQuestionAnsweringModel(self.model_config)
 
-        elif task_name == 'qa':
-          self.model = BERTQuestionAnsweringModel(self.model_config)
+          results = self.model.train(self.datasets, self.examples, **self.train_config) 
 
-        results = self.model.train(self.datasets, self.examples, **self.train_config) 
-
-        for metric_name in results:
-          if model_name == model_names[0]:
-            dataset_metrics.append(dataset_name+metric_name)
-        output.append([model_name, dataset_name, results])
-        self.model.wipe_memory()
+          for metric_name in results:
+            if model_name == model_names[0]:
+              dataset_metrics.append(dataset_name+metric_name)
+          output.append([model_name, dataset_name, results, run])
+          self.model.wipe_memory()
     
     model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
     metric_names = ['Model']

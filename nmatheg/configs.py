@@ -19,8 +19,9 @@ def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
 
     config['tokenization'] = {
         'tokenizer_name' : 'WordTokenizer',
-        'vocab_size' : 10000,
+        'vocab_size' : 300,
         'max_tokens' : 128,
+        'tok_save_path': 'ckpts/bpe-ar-300'
     }
 
     config['log'] = {'print_every':10}
@@ -29,7 +30,8 @@ def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
         'save_dir' : '.',
         'epochs' : epochs,
         'batch_size' : batch_size,
-        'lr': lr
+        'lr': lr, 
+        'runs': 1 
     }
     return config 
 

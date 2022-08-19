@@ -1,6 +1,7 @@
 
 import tnkeeh as tn 
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
+
 import os 
 from .utils import get_preprocessing_args
 from transformers import AutoTokenizer
@@ -9,6 +10,7 @@ from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 from .preprocess_qa import prepare_features
 import copy 
+import pickle 
 
 def split_dataset(dataset, config, data_config, seed = 42):
     dataset_name = config['dataset']['dataset_name']
@@ -53,6 +55,7 @@ def create_dataset(config, data_config):
     tokenizer_name = config['tokenization']['tokenizer_name']
     max_tokens = int(config['tokenization']['max_tokens'])
     vocab_size  = int(config['tokenization']['vocab_size'])
+    tok_save_path = config['tokenization']['tok_save_path']
 
     batch_size = int(config['train']['batch_size'])
     dataset_name = config['dataset']['dataset_name']
@@ -75,14 +78,22 @@ def create_dataset(config, data_config):
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
-            tokenizer = get_tokenizer(tokenizer_name)
-            tokenizer = tokenizer(vocab_size = vocab_size)
-            tokenizer.train('data.txt')
-            dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
+            if os.path.isfile(f"{tok_save_path}/tok.model"):
+                print('loading pretrained tokenizer')
+                tokenizer.load(f"{tok_save_path}/tok.model")
+                dataset = load_from_disk(f'{tok_save_path}/tok.data')
+            else:
+                print('training tokenizer from scratch')
+                write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+                if 'bpe' not in tokenizer_name:
+                    tokenizer = tokenizer(vocab_size = vocab_size)
+                tokenizer.train('data.txt')
+                tokenizer.save(f"{tok_save_path}")
+                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
+                dataset.save_to_disk(f'{tok_save_path}/tok.data')                
             columns=['input_ids', 'labels'] 
         
-        dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+            dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
 
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
