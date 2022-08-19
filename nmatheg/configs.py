@@ -27,11 +27,11 @@ def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
     config['log'] = {'print_every':10}
 
     config['train'] = {
-        'save_dir' : '.',
+        'save_dir' : 'ckpts',
         'epochs' : epochs,
         'batch_size' : batch_size,
         'lr': lr, 
-        'runs': 1 
+        'runs': 2 
     }
     return config 
 
@@ -40,7 +40,8 @@ def create_configs(config, data_config):
     train_config = {'epochs':int(config['train']['epochs']),
                     'save_dir':config['train']['save_dir'],
                     'batch_size':int(config['train']['batch_size']),
-                    'lr':float(config['train']['lr'])}
+                    'lr':float(config['train']['lr']),
+                    'runs':config['train']['runs']}
 
     model_config = {'model_name':config['model']['model_name'],
                     'vocab_size':int(config['tokenization']['vocab_size']),
