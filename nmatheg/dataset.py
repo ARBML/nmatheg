@@ -61,6 +61,7 @@ def create_dataset(config, data_config):
     dataset_name = config['dataset']['dataset_name']
     model_name = config['model']['model_name']
     task_name = data_config[dataset_name]['task']
+    save_dir = config['train']['save_dir']
 
     # clean and load data
     # load_dataset_kwargs = config['load_dataset_kwargs']
@@ -79,20 +80,21 @@ def create_dataset(config, data_config):
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
+            tokenizer = get_tokenizer(tokenizer_name)
+            if 'bpe' not in tokenizer_name:
+                tokenizer = tokenizer(vocab_size = vocab_size)
+            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
-                tokenizer.load(f"{tok_save_path}/tok.model")
-                dataset = load_from_disk(f'{tok_save_path}/tok.data')
+                tokenizer.load(f"{tok_save_path}/")
+                dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
-                tokenizer = get_tokenizer(tokenizer_name)
-                if 'bpe' not in tokenizer_name:
-                    tokenizer = tokenizer(vocab_size = vocab_size)
                 tokenizer.train('data.txt')
-                tokenizer.save(f"{tok_save_path}")
+                tokenizer.save(f"{tok_save_path}/")
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
-                dataset.save_to_disk(f'{tok_save_path}/tok.data')                
+                dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
         
             dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
@@ -120,4 +122,4 @@ def create_dataset(config, data_config):
             dataset[split].set_format(type='torch', columns=columns)
             dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
-    return [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]
+    return tokenizer, [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]

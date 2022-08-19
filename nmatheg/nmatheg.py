@@ -5,6 +5,7 @@ from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTT
 from .configs import create_configs, create_default_config
 import pandas as pd
 import configparser
+import pickle 
 
 class TrainStrategy:
   def __init__(self, config_path = None, datasets = '', models = '', **kwargs):
@@ -36,7 +37,7 @@ class TrainStrategy:
         for model_name in model_names:
           self.config['model']['model_name'] = model_name
           self.train_config, self.model_config = create_configs(self.config, self.data_config)
-          self.datasets, self.examples = create_dataset(self.config, self.data_config)
+          tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config)
           
           if task_name == 'cls':
             if 'bert' in model_name:
@@ -51,17 +52,22 @@ class TrainStrategy:
           elif task_name == 'qa':
             self.model = BERTQuestionAnsweringModel(self.model_config)
 
-          results = self.model.train(self.datasets, self.examples, **self.train_config) 
+          self.train_config['save_dir'] += f"/{tokenizer.name}/{dataset_name}/run_{run}"
+          os.makedirs(self.train_config['save_dir'], exist_ok = True)
+          metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
-          for metric_name in results:
+          for metric_name in metrics:
             if model_name == model_names[0]:
               dataset_metrics.append(dataset_name+metric_name)
-          output.append([model_name, dataset_name, results, run])
+          output.append([model_name, dataset_name, metrics, run])
           self.model.wipe_memory()
+    
     
     model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
     metric_names = ['Model']
     dataset_names = ['']
+    with open(f"{self.config['train']['save_dir']}/{tokenizer.name}/results.pl", 'wb') as handle:
+      pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
     for row in output:
       model_name = row[0]
       dataset_name = row[1]
