@@ -63,8 +63,9 @@ def create_dataset(config, data_config):
     task_name = data_config[dataset_name]['task']
 
     # clean and load data
-    load_dataset_kwargs = config['load_dataset_kwargs']
-    dataset = load_dataset(dataset_name,**load_dataset_kwargs)
+    # load_dataset_kwargs = config['load_dataset_kwargs']
+    # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
+    dataset = load_dataset(dataset_name)
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
 
@@ -85,6 +86,7 @@ def create_dataset(config, data_config):
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+                tokenizer = get_tokenizer(tokenizer_name)
                 if 'bpe' not in tokenizer_name:
                     tokenizer = tokenizer(vocab_size = vocab_size)
                 tokenizer.train('data.txt')
