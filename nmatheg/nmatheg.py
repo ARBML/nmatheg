@@ -8,7 +8,6 @@ import configparser
 
 class TrainStrategy:
   def __init__(self, config_path = None, datasets = '', models = '', **kwargs):
-    print('here')
     if config_path == None:
       self.config = create_default_config(**kwargs)
       self.config['dataset'] = {'dataset_name' : datasets}
