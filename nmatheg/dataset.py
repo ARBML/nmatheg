@@ -88,7 +88,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'])
-                tokenizer.train('data.txt')
+                tokenizer.train(file = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
