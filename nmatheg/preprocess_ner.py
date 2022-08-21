@@ -4,7 +4,7 @@ from datasets import Dataset, DatasetDict
 
 def aggregate_tokens(dataset, config, data_config, max_len = 128):
     new_dataset = {}
-    dataset_name = config['dataset']['dataset_name']
+    dataset_name = data_config['name']
     token_col = data_config[dataset_name]['text']
     tag_col = data_config[dataset_name]['label']
 

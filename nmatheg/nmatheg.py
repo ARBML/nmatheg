@@ -24,10 +24,10 @@ class TrainStrategy:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)
 
-    self.data_config = configparser.ConfigParser()
+    self.datasets_config = configparser.ConfigParser()
     rel_path = os.path.dirname(__file__)
     data_ini_path = os.path.join(rel_path, "datasets.ini")
-    self.data_config.read(data_ini_path)
+    self.datasets_config.read(data_ini_path)
 
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
@@ -43,13 +43,16 @@ class TrainStrategy:
         for dataset_name in dataset_names: 
           for model_name in model_names:
             for run in range(runs):
-              task_name = self.data_config[dataset_name]['task']
+              self.data_config = self.datasets_config[dataset_name]
+              print(self.data_config)
+              task_name = self.data_config['task']
               tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
-                                                                      vocab_size = vocab_size, model_name = model_name,
+                                                                      vocab_size = vocab_size, 
+                                                                      model_name = model_name,
                                                                       tokenizer_name = tokenizer_name)
               self.model_config = {'model_name':model_name,
                                   'vocab_size':vocab_size,
-                                  'num_labels':int(self.data_config[dataset_name]['num_labels'])}
+                                  'num_labels':int(self.data_config['num_labels'])}
 
               print(self.model_config)
               if task_name == 'cls':

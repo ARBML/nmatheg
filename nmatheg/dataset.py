@@ -11,13 +11,12 @@ from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 from .preprocess_qa import prepare_features
 import copy 
 
-def split_dataset(dataset, config, data_config, seed = 42):
-    dataset_name = config['dataset']['dataset_name']
+def split_dataset(dataset, data_config, seed = 42):
     split_names = ['train', 'valid', 'test']
 
     for i, split_name in enumerate(['train', 'valid', 'test']):
-        if split_name in data_config[dataset_name]:
-            split_names[i] = data_config[dataset_name][split_name]
+        if split_name in data_config:
+            split_names[i] = data_config[split_name]
             dataset[split_name] = dataset[split_names[i]]
 
     #create validation split
@@ -35,8 +34,7 @@ def split_dataset(dataset, config, data_config, seed = 42):
 
 
 def clean_dataset(dataset, config, data_config):
-    dataset_name = config['dataset']['dataset_name']
-    text = data_config[dataset_name]['text']
+    text = data_config['text']
 
     args = get_preprocessing_args(config)
     cleaner = tn.Tnkeeh(**args)
@@ -49,14 +47,15 @@ def write_data_for_train(dataset, text):
         data.append(sample[text])    
     open(f'data.txt', 'w').write(('\n').join(data))
 
-def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn", tokenizer_name = "bpe"):
+def create_dataset(config, data_config, vocab_size = 300, 
+                   model_name = "birnn", tokenizer_name = "bpe"):
 
+    dataset_name = data_config['name']
     max_tokens = int(config['tokenization']['max_tokens'])
     tok_save_path = config['tokenization']['tok_save_path']
 
     batch_size = int(config['train']['batch_size'])
-    dataset_name = config['dataset']['dataset_name']
-    task_name = data_config[dataset_name]['task']
+    task_name = data_config['task']
     save_dir = config['train']['save_dir']
 
     # clean and load data
@@ -66,14 +65,14 @@ def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn", 
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
 
-    dataset = split_dataset(dataset, config, data_config)
+    dataset = split_dataset(dataset, data_config)
     examples = copy.deepcopy(dataset)
 
     if task_name == 'cls':
         # tokenize data
         if 'bert' in model_name:
           tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-          dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
+          dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             if tokenizer_name == 'bpe':
@@ -88,14 +87,14 @@ def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn", 
                 dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config[dataset_name]['text'])
+                write_data_for_train(dataset['train'], data_config['text'])
                 tokenizer.train('data.txt')
                 tokenizer.save(f"{tok_save_path}/")
-                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config[dataset_name]['text']], out_length= max_tokens)}, batched=True)
+                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
         
-            dataset = dataset.map(lambda examples:{'labels': examples[data_config[dataset_name]['label']]}, batched=True)
+            dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
 
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
