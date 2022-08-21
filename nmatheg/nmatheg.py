@@ -40,7 +40,7 @@ class TrainStrategy:
           for model_name in model_names:
             for run in range(runs):
               self.data_config = self.datasets_config[dataset_name]
-              print(self.data_config)
+              print(dict(self.data_config))
               task_name = self.data_config['task']
               tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
                                                                       vocab_size = vocab_size, 
