@@ -79,9 +79,8 @@ class TrainStrategy:
               for metric_name in metrics:
                 if model_name == model_names[0]:
                   dataset_metrics.append(dataset_name+metric_name)
-              output.append([model_name, dataset_name, tokenizer_name, run,  metrics])
+              output.append([model_name, dataset_name, tokenizer.name, run,  metrics])
               self.model.wipe_memory()
-    
     
     # model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
     # metric_names = ['Model']
