@@ -19,7 +19,7 @@ class TrainStrategy:
       if vocab_sizes:
         self.config['tokenization']['vocab_size'] = vocab_sizes
       if tokenizers:
-        self.config['Tokenization']['tokenizer_name'] = tokenizers
+        self.config['tokenization']['tokenizer_name'] = tokenizers
     else:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)
