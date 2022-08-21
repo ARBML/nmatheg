@@ -78,9 +78,7 @@ def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn"):
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            tokenizer = get_tokenizer(tokenizer_name)
-            if 'bpe' not in tokenizer_name:
-                tokenizer = tokenizer(vocab_size = vocab_size)
+            tokenizer = get_tokenizer(tokenizer_name)(vocab_size = vocab_size)
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')

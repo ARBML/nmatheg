@@ -29,7 +29,7 @@ class TrainStrategy:
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
-    vocab_sizes = [d.strip() for d in self.config['tokenization']['vocab_size'].split(',')]
+    vocab_sizes = [int(d.strip()) for d in self.config['tokenization']['vocab_size'].split(',')]
     runs = int(self.config['train']['runs'])
     output = []
     dataset_metrics = []
@@ -46,6 +46,7 @@ class TrainStrategy:
                                  'vocab_size':vocab_size,
                                  'num_labels':int(self.data_config[dataset_name]['num_labels'])}
 
+            print(self.model_config)
             if task_name == 'cls':
               if 'bert' in model_name:
                 self.model = BERTTextClassificationModel(self.model_config)
@@ -63,6 +64,7 @@ class TrainStrategy:
                                  'batch_size':int(self.config['train']['batch_size']),
                                  'lr':float(self.config['train']['lr']),
                                  'runs':run}
+            print(self.train_config)
             os.makedirs(self.train_config['save_dir'], exist_ok = True)
             metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
