@@ -25,9 +25,8 @@ class BiRNN(nn.Module):
         self.embedding = nn.Embedding(vocab_size, 128)
         self.bigru1 = nn.GRU(128, 128, bidirectional=True)
         self.bigru2 = nn.GRU(256, 128, bidirectional=True)
-        self.bigru3 = nn.GRU(256, 128, bidirectional=True)
-        self.bigru4 = nn.GRU(256, 256, bidirectional=True)
-        self.fc = nn.Linear(512, num_labels)
+        self.fc = nn.Linear(256, num_labels)
+            
         self.num_labels = num_labels
         
     def forward(self, 
@@ -37,9 +36,8 @@ class BiRNN(nn.Module):
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
-        out,h = self.bigru3(out)
-        out,h = self.bigru4(out)
         logits = self.fc(out[:, -1, :])
+        
         loss = self.compute_loss(logits, labels)
         return {'loss':loss,
                 'logits':logits} 
