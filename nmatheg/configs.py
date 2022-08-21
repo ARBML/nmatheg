@@ -19,7 +19,7 @@ def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
 
     config['tokenization'] = {
         'tokenizer_name' : 'bpe-morph',
-        'vocab_size' : 300,
+        'vocab_size' : '300',
         'max_tokens' : 128,
         'tok_save_path': 'ckpts'
     }

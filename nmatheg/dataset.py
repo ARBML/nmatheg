@@ -50,11 +50,10 @@ def write_data_for_train(dataset, text):
         data.append(sample[text])    
     open(f'data.txt', 'w').write(('\n').join(data))
 
-def create_dataset(config, data_config):
+def create_dataset(config, data_config, vocab_size = 300):
 
     tokenizer_name = config['tokenization']['tokenizer_name']
     max_tokens = int(config['tokenization']['max_tokens'])
-    vocab_size  = int(config['tokenization']['vocab_size'])
     tok_save_path = config['tokenization']['tok_save_path']
 
     batch_size = int(config['train']['batch_size'])

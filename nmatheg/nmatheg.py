@@ -8,11 +8,15 @@ import configparser
 import pickle 
 
 class TrainStrategy:
-  def __init__(self, config_path = None, datasets = '', models = '', **kwargs):
+  def __init__(self, config_path = None, datasets = None, models = None, vocab_sizes = None, **kwargs):
     if config_path == None:
       self.config = create_default_config(**kwargs)
-      self.config['dataset'] = {'dataset_name' : datasets}
-      self.config['model'] = {'model_name' : models}
+      if datasets:
+        self.config['dataset'] = {'dataset_name' : datasets}
+      if models:
+        self.config['model'] = {'model_name' : models}
+      if vocab_sizes:
+        self.config['tokenization']['vocab_size'] = vocab_sizes
     else:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)
@@ -25,42 +29,46 @@ class TrainStrategy:
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
+    vocab_sizes = [d.strip() for d in self.config['tokenization']['vocab_size'].split(',')]
     runs = int(self.config['train']['runs'])
     output = []
     dataset_metrics = []
 
-    for dataset_name in dataset_names:
-      for run in range(runs): 
-        self.config['dataset']['dataset_name'] = dataset_name
-        task_name = self.data_config[dataset_name]['task']
+    for vocab_size in vocab_sizes:
+      for dataset_name in dataset_names:
+        for run in range(runs): 
+          self.config['dataset']['dataset_name'] = dataset_name
+          task_name = self.data_config[dataset_name]['task']
 
-        for model_name in model_names:
-          self.config['model']['model_name'] = model_name
-          self.train_config, self.model_config = create_configs(self.config, self.data_config)
-          tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config)
-          
-          if task_name == 'cls':
-            if 'bert' in model_name:
-              self.model = BERTTextClassificationModel(self.model_config)
-            elif 'birnn' in model_name:
-              self.model = SimpleClassificationModel(self.model_config)
-            else:
-              raise('error not recognized model name')
-          elif task_name == 'ner':
-            self.model = BERTTokenClassificationModel(self.model_config)
+          for model_name in model_names:
+            self.config['model']['model_name'] = model_name
+            self.train_config, self.model_config = create_configs(self.config, self.data_config)
+            tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, vocab_size = vocab_size)
+            self.model_config['vocab_size'] = vocab_size
+            
+            if task_name == 'cls':
+              if 'bert' in model_name:
+                self.model = BERTTextClassificationModel(self.model_config)
+              elif 'birnn' in model_name:
+                self.model = SimpleClassificationModel(self.model_config)
+              else:
+                raise('error not recognized model name')
+            elif task_name == 'ner':
+              self.model = BERTTokenClassificationModel(self.model_config)
 
-          elif task_name == 'qa':
-            self.model = BERTQuestionAnsweringModel(self.model_config)
+            elif task_name == 'qa':
+              self.model = BERTQuestionAnsweringModel(self.model_config)
 
-          self.train_config['save_dir'] += f"/{tokenizer.name}/{dataset_name}/run_{run}"
-          os.makedirs(self.train_config['save_dir'], exist_ok = True)
-          metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+            self.train_config['save_dir'] += f"/{tokenizer.name}/{dataset_name}/run_{run}"
+            
+            os.makedirs(self.train_config['save_dir'], exist_ok = True)
+            metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
-          for metric_name in metrics:
-            if model_name == model_names[0]:
-              dataset_metrics.append(dataset_name+metric_name)
-          output.append([model_name, dataset_name, metrics, run])
-          self.model.wipe_memory()
+            for metric_name in metrics:
+              if model_name == model_names[0]:
+                dataset_metrics.append(dataset_name+metric_name)
+            output.append([model_name, dataset_name, metrics, run])
+            self.model.wipe_memory()
     
     
     model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
