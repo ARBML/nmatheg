@@ -1,16 +1,15 @@
 
 import tnkeeh as tn 
 from datasets import load_dataset, load_from_disk
+from bpe_surgery import bpe
 
 import os 
 from .utils import get_preprocessing_args
 from transformers import AutoTokenizer
 import torch
-from .utils import get_tokenizer
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 from .preprocess_qa import prepare_features
 import copy 
-import pickle 
 
 def split_dataset(dataset, config, data_config, seed = 42):
     dataset_name = config['dataset']['dataset_name']
@@ -50,9 +49,8 @@ def write_data_for_train(dataset, text):
         data.append(sample[text])    
     open(f'data.txt', 'w').write(('\n').join(data))
 
-def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn"):
+def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn", tokenizer_name = "bpe"):
 
-    tokenizer_name = config['tokenization']['tokenizer_name']
     max_tokens = int(config['tokenization']['max_tokens'])
     tok_save_path = config['tokenization']['tok_save_path']
 
@@ -78,7 +76,11 @@ def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn"):
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            tokenizer = get_tokenizer(tokenizer_name)(vocab_size = vocab_size)
+            if tokenizer == 'bpe':
+                tokenizer = bpe(vocab_size = vocab_size)
+            elif tokenizer == 'bpe-morph': 
+                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
+
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
