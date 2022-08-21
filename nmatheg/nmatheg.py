@@ -2,7 +2,7 @@
 import os 
 from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel,BERTQuestionAnsweringModel
-from .configs import create_configs, create_default_config
+from .configs import create_default_config
 import pandas as pd
 import configparser
 import pickle 
