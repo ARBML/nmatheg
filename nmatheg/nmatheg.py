@@ -80,26 +80,27 @@ class TrainStrategy:
               self.model.wipe_memory()
     
     
-    model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
-    metric_names = ['Model']
-    dataset_names = ['']
-    with open(f"{self.config['train']['save_dir']}/{tokenizer.name}/results.pl", 'wb') as handle:
-      pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    for row in output:
-      model_name = row[0]
-      dataset_name = row[1]
-      metrics = row[2]
-      task_name = self.data_config[dataset_name]['task']
-      for metric_name in row[2]: 
-        model_results[model_name][dataset_metrics.index(dataset_name+metric_name)] = round(metrics[metric_name]*100, 2)
+    # model_results = {model_name:[0]*len(dataset_metrics) for model_name in model_names}
+    # metric_names = ['Model']
+    # dataset_names = ['']
+    # with open(f"{self.config['train']['save_dir']}/{tokenizer.name}/results.pl", 'wb') as handle:
+    #   pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # for row in output:
+    #   model_name = row[0]
+    #   dataset_name = row[1]
+    #   metrics = row[2]
+    #   task_name = self.data_config[dataset_name]['task']
+    #   for metric_name in row[2]: 
+    #     model_results[model_name][dataset_metrics.index(dataset_name+metric_name)] = round(metrics[metric_name]*100, 2)
         
-        # this is only used once 
-        if model_name == model_names[0]:
-          metric_names.append(metric_name) 
-          dataset_names.append(dataset_name) 
+    #     # this is only used once 
+    #     if model_name == model_names[0]:
+    #       metric_names.append(metric_name) 
+    #       dataset_names.append(dataset_name) 
     
-    rows = []
-    for model_name in model_results:
-      rows.append([model_name]+model_results[model_name])
+    # rows = []
+    # for model_name in model_results:
+    #   rows.append([model_name]+model_results[model_name])
 
-    return pd.DataFrame(rows, columns = [dataset_names, metric_names])     
+    # return pd.DataFrame(rows, columns = [dataset_names, metric_names]) 
+    return output    
