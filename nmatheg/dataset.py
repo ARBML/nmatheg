@@ -76,9 +76,9 @@ def create_dataset(config, data_config, vocab_size = 300, model_name = "birnn", 
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config[dataset_name]['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            if tokenizer == 'bpe':
+            if tokenizer_name == 'bpe':
                 tokenizer = bpe(vocab_size = vocab_size)
-            elif tokenizer == 'bpe-morph': 
+            elif tokenizer_name == 'bpe-morph': 
                 tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
