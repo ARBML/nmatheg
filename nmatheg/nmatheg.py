@@ -37,15 +37,16 @@ class TrainStrategy:
     for vocab_size in vocab_sizes:
       for dataset_name in dataset_names:
         for run in range(runs): 
-          self.config['dataset']['dataset_name'] = dataset_name
           task_name = self.data_config[dataset_name]['task']
 
           for model_name in model_names:
-            self.config['model']['model_name'] = model_name
             self.train_config, self.model_config = create_configs(self.config, self.data_config)
-            tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, vocab_size = vocab_size)
-            self.model_config['vocab_size'] = vocab_size
-            
+            tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
+                                                                     vocab_size = vocab_size, model_name = model_name)
+            self.model_config = {'model_name':model_name,
+                                 'vocab_size':vocab_size,
+                                 'num_labels':int(self.data_config[dataset_name]['num_labels'])}
+
             if task_name == 'cls':
               if 'bert' in model_name:
                 self.model = BERTTextClassificationModel(self.model_config)
@@ -58,9 +59,11 @@ class TrainStrategy:
 
             elif task_name == 'qa':
               self.model = BERTQuestionAnsweringModel(self.model_config)
-
-            self.train_config['save_dir'] += f"/{tokenizer.name}/{dataset_name}/run_{run}"
-            
+            self.train_config = {'epochs':int(self.config['train']['epochs']),
+                                 'save_dir':f"{self.config['train']['save_dir']}/{tokenizer.name}/{dataset_name}/run_{run}",
+                                 'batch_size':int(self.config['train']['batch_size']),
+                                 'lr':float(self.config['train']['lr']),
+                                 'runs':run}
             os.makedirs(self.train_config['save_dir'], exist_ok = True)
             metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
