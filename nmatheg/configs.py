@@ -1,5 +1,5 @@
 import configparser
-def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5):
+def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -18,8 +18,6 @@ def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5):
     }
 
     config['tokenization'] = {
-        'tokenizer_name' : 'bpe-morph',
-        'vocab_size' : '300',
         'max_tokens' : 128,
         'tok_save_path': 'ckpts'
     }
@@ -31,6 +29,6 @@ def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5):
         'epochs' : epochs,
         'batch_size' : batch_size,
         'lr': lr, 
-        'runs': 2 
+        'runs': runs 
     }
     return config 
