@@ -18,15 +18,16 @@ import copy
 from .ner_utils import get_labels
 
 class BiRNN(nn.Module):
-    def __init__(self, vocab_size, num_labels):
+    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
         
         super().__init__()
         
-        self.embedding = nn.Embedding(vocab_size, 128)
-        self.bigru1 = nn.GRU(128, 128, bidirectional=True)
-        self.bigru2 = nn.GRU(256, 128, bidirectional=True)
-        self.fc = nn.Linear(256, num_labels)
-            
+        self.embedding = nn.Embedding(vocab_size, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
+        self.fc = nn.Linear(2*hidden_dim, hidden_dim)
+        self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         
     def forward(self, 
@@ -36,15 +37,15 @@ class BiRNN(nn.Module):
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
-        logits = self.fc(out[:, -1, :])
-        
+        out,h = self.bigru3(out)
+        logits = self.fc(out[:,0,:])
         loss = self.compute_loss(logits, labels)
         return {'loss':loss,
                 'logits':logits} 
     
     def compute_loss(self, logits, labels):
         loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(logits.view(-1, self.num_labels), labels)
+        loss = loss_fct(logits, labels)
         return loss
 
 class BaseTextClassficationModel:
@@ -75,13 +76,11 @@ class BaseTextClassficationModel:
             self.model.train().to(self.device)
             for _, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
+                self.optimizer.zero_grad()
                 outputs = self.model(**batch)
                 loss = outputs['loss']
                 loss.backward()
                 self.optimizer.step()
-                # self.scheduler.step()  
-                self.optimizer.zero_grad()
-
                 labels = batch['labels'].cpu() 
                 preds = outputs['logits'].argmax(-1).cpu() 
                 accuracy += accuracy_score(labels, preds) /len(train_dataset)
