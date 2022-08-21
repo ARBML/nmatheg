@@ -1,5 +1,5 @@
 import configparser
-def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
+def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
