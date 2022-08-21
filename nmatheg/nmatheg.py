@@ -32,7 +32,7 @@ class TrainStrategy:
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
-    tokenizers = [t.strip() for t in self.config['Tokenization']['tokenizer_name'].split(',')]
+    tokenizers = [t.strip() for t in self.config['tokenization']['tokenizer_name'].split(',')]
     vocab_sizes = [int(v.strip()) for v in self.config['tokenization']['vocab_size'].split(',')]
     runs = int(self.config['train']['runs'])
     output = []
