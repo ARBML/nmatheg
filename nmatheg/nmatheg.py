@@ -63,7 +63,7 @@ class TrainStrategy:
                 self.model = BERTQuestionAnsweringModel(self.model_config)
               
               try: tokenizer_name = tokenizer.name 
-              except: tokenizer_name = tokenizer.name_or_path
+              except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
 
               self.train_config = {'epochs':int(self.config['train']['epochs']),
                                   'save_dir':f"{self.config['train']['save_dir']}/{tokenizer_name}/{dataset_name}/run_{run}",
@@ -77,7 +77,7 @@ class TrainStrategy:
               for metric_name in metrics:
                 if model_name == model_names[0]:
                   dataset_metrics.append(dataset_name+metric_name)
-              output.append([model_name, dataset_name, tokenizer.name, run,  metrics])
+              output.append([model_name, dataset_name, tokenizer_name, run,  metrics])
               self.model.wipe_memory()
     with open(f"{self.config['train']['save_dir']}/results.pl", 'wb') as handle:
       pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
