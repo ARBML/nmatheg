@@ -150,7 +150,7 @@ class BiRNNForTokenClassification(nn.Module):
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
         self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
         self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim/2, bidirectional=True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
         self.fc = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
@@ -208,7 +208,7 @@ class BaseTokenClassficationModel:
                 batch = None
 
             train_metrics = self.evaluate_dataset(train_dataset) 
-            print(f"Epoch {epoch} Valid Loss {train_metrics['loss']:.4f} Valid F1 {train_metrics['f1']:.4f}")
+            print(f"Epoch {epoch} Train Loss {train_metrics['loss']:.4f} Train F1 {train_metrics['f1']:.4f}")
             
             self.model.eval().to(self.device)
             valid_metrics = self.evaluate_dataset(valid_dataset)

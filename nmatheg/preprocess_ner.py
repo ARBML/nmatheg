@@ -62,20 +62,21 @@ def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'ber
         for i, label in enumerate(dataset[tag_col]):
             word_ids = []
             tokens = []
-
             for j, word in enumerate(dataset[token_col][i]):
-                word_ids = tokenizer._encode_word([word])
-                for word_id in word_ids:
-                    tokens.append(word_id)
+                token_ids = tokenizer._encode_word(word)
+                for token_id in token_ids:
+                    tokens.append(token_id)
                     word_ids.append(j)
-
+                if len(tokens) > max_len:
+                    break
+            
             while len(tokens) < max_len:
                 tokens.append(0)
                 word_ids.append(None)
             else:
                 tokens = tokens[:max_len]
                 word_ids = word_ids[:max_len]
-                
+            
             input_ids.append(tokens)
             previous_word_idx = None
             label_ids = []
@@ -87,7 +88,6 @@ def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'ber
                 else:
                     label_ids.append(label[word_idx] if True else -100)
                 previous_word_idx = word_idx
-
             labels.append(label_ids)
         dataset["labels"] = labels
         dataset["input_ids"] = input_ids

@@ -66,8 +66,6 @@ def create_dataset(config, data_config, vocab_size = 300,
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     dataset = load_dataset(dataset_name)
-    # dataset = dataset['train'].train_test_split(test_size=0.95, seed = 43)
-    # dataset.pop('test')
 
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
@@ -128,6 +126,7 @@ def create_dataset(config, data_config, vocab_size = 300,
 
             columns=['input_ids', 'labels'] 
         
+        print('aligining the tokens ...')
         for split in dataset:
             dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_name)
                                                 , batched=True, remove_columns=dataset[split].column_names)
