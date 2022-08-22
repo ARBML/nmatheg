@@ -64,9 +64,9 @@ def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'ber
             tokens = []
 
             for j, word in enumerate(dataset[token_col][i]):
-                word_tokens = tokenizer.encode([word])
-                for word_token in word_tokens:
-                    tokens.append(word_token)
+                word_ids = tokenizer._encode_word([word])
+                for word_id in word_ids:
+                    tokens.append(word_id)
                     word_ids.append(j)
 
             while len(tokens) < max_len:

@@ -131,7 +131,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         for split in dataset:
             dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_name)
                                                 , batched=True, remove_columns=dataset[split].column_names)
-        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+        # dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     
     elif task_name == 'qa':
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
