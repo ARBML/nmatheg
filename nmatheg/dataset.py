@@ -133,7 +133,26 @@ def create_dataset(config, data_config, vocab_size = 300,
         # dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     
     elif task_name == 'qa':
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        if 'bert' in model_name:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        else:
+            if tokenizer_name == 'bpe':
+                tokenizer = bpe(vocab_size = vocab_size)
+            elif tokenizer_name == 'bpe-morph': 
+                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
+
+            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
+            if os.path.isfile(f"{tok_save_path}/tok.model"):
+                print('loading pretrained tokenizer')
+                tokenizer.load(f"{tok_save_path}/")
+                dataset = load_from_disk(f'{tok_save_path}/data/')
+            else:
+                print('training tokenizer from scratch')
+                write_data_for_train(dataset['train'], data_config['text'], task = task_name)
+                tokenizer.train(file = 'data.txt')
+                tokenizer.save(f"{tok_save_path}/")
+                dataset.save_to_disk(f'{tok_save_path}/data/')  
+
 
         for split in dataset:
           dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)

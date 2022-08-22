@@ -3,7 +3,7 @@ import os
 from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,BERTTokenClassificationModel,BERTQuestionAnsweringModel\
-                    ,SimpleTokenClassificationModel
+                    ,SimpleTokenClassificationModel,SimpleQuestionAnsweringModel
 from .configs import create_default_config
 import configparser
 import pickle 
@@ -65,7 +65,10 @@ class TrainStrategy:
                   self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
-                self.model = BERTQuestionAnsweringModel(self.model_config)
+                if 'birnn' in model_name:
+                  self.model = SimpleQuestionAnsweringModel(self.model_config)
+                else:
+                  self.model = BERTQuestionAnsweringModel(self.model_config)
               
               try: tokenizer_name = tokenizer.name 
               except: tokenizer_name = tokenizer.name_or_path.split('/')[0]

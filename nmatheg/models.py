@@ -16,6 +16,7 @@ from accelerate import Accelerator
 from datasets import load_metric
 import copy 
 from .ner_utils import get_labels
+from .qa_utils import evaluate_metric
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels, hidden_dim = 128):
@@ -283,7 +284,6 @@ class BERTTokenClassificationModel(BaseTokenClassficationModel):
         self.optimizer = None 
         torch.cuda.empty_cache()
 
-from .qa_utils import evaluate_metric
 class BaseQuestionAnsweringModel:
     def __init__(self, config):
         self.model = nn.Module()
@@ -378,6 +378,57 @@ class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForQuestionAnswering.from_pretrained(self.model_name, config = config)
     
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()
+
+class BiRNNForQuestionAnswering(nn.Module):
+    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
+        
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.qa_outputs = nn.Linear(hidden_dim, 2)
+        self.hidden_dim = hidden_dim
+        self.num_labels = num_labels
+        
+    def forward(self, 
+                input_ids,
+                labels,
+                start_positions = None,
+                end_positions = None):
+
+        embedded = self.embedding(input_ids)        
+        out,h = self.bigru1(embedded)
+        out,h = self.bigru2(out)
+        out,h = self.bigru3(out)
+        logits = self.fc(out)
+        hidden_states = self.qa_outputs(hidden_states)  # (bs, max_query_len, 2)
+        start_logits, end_logits = logits.split(1, dim=-1)
+        start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
+        end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
+        loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
+        return {'loss':loss,
+                'logits':logits} 
+    
+    def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
+        loss_fct = nn.CrossEntropyLoss(ignore_index=None)
+        start_loss = loss_fct(start_logits, start_positions)
+        end_loss = loss_fct(end_logits, end_positions)
+        total_loss = (start_loss + end_loss) / 2
+        return total_loss
+
+class SimpleQuestionAnsweringModel(BaseQuestionAnsweringModel):
+    def __init__(self, config):
+        BaseQuestionAnsweringModel.__init__(self, config)
+        self.model = BiRNNForQuestionAnswering(self.vocab_size, self.num_labels)
+        self.model.to(self.device)  
+        # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
+
     def wipe_memory(self):
         self.model = None  
         self.optimizer = None 
