@@ -51,20 +51,22 @@ class TrainStrategy:
                                   'num_labels':int(self.data_config['num_labels'])}
 
               print(self.model_config)
-              if task_name == 'cls':
-                if 'bert' in model_name:
-                  self.model = BERTTextClassificationModel(self.model_config)
-                elif 'birnn' in model_name:
+              if task_name == 'cls':                  
+                if 'birnn' in model_name:
                   self.model = SimpleClassificationModel(self.model_config)
                 else:
-                  raise('error not recognized model name')
+                  self.model = BERTTextClassificationModel(self.model_config)
               elif task_name == 'ner':
                 self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
                 self.model = BERTQuestionAnsweringModel(self.model_config)
+              
+              try: tokenizer_name = tokenizer.name 
+              except: tokenizer_name = tokenizer.name_or_path
+
               self.train_config = {'epochs':int(self.config['train']['epochs']),
-                                  'save_dir':f"{self.config['train']['save_dir']}/{tokenizer.name}/{dataset_name}/run_{run}",
+                                  'save_dir':f"{self.config['train']['save_dir']}/{tokenizer_name}/{dataset_name}/run_{run}",
                                   'batch_size':int(self.config['train']['batch_size']),
                                   'lr':float(self.config['train']['lr']),
                                   'runs':run}
