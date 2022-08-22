@@ -142,6 +142,37 @@ class BERTTextClassificationModel(BaseTextClassficationModel):
         self.optimizer = None 
         torch.cuda.empty_cache()
 
+class BiRNNForTokenClassification(nn.Module):
+    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
+        
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim/2, bidirectional=True)
+        self.fc = nn.Linear(hidden_dim, num_labels)
+        self.hidden_dim = hidden_dim
+        self.num_labels = num_labels
+        
+    def forward(self, 
+                input_ids,
+                labels):
+
+        embedded = self.embedding(input_ids)        
+        out,h = self.bigru1(embedded)
+        out,h = self.bigru2(out)
+        out,h = self.bigru3(out)
+        logits = self.fc(out)
+        loss = self.compute_loss(logits, labels)
+        return {'loss':loss,
+                'logits':logits} 
+    
+    def compute_loss(self, logits, labels):
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+        return loss
+
 class BaseTokenClassficationModel:
     def __init__(self, config):
         self.model = nn.Module()
@@ -228,6 +259,18 @@ class BaseTokenClassficationModel:
                     "f1": results["overall_f1"],
                     "accuracy": results["overall_accuracy"],
                 }
+
+class SimpleTokenClassificationModel(BaseTokenClassficationModel):
+    def __init__(self, config):
+        BaseTokenClassficationModel.__init__(self, config)
+        self.model = BiRNNForTokenClassification(self.vocab_size, self.num_labels)
+        self.model.to(self.device)  
+        # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
+
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()
 
 class BERTTokenClassificationModel(BaseTokenClassficationModel):
     def __init__(self, config):

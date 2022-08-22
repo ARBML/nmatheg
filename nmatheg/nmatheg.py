@@ -1,7 +1,9 @@
 
 import os 
 from .dataset import create_dataset
-from .models import SimpleClassificationModel, BERTTextClassificationModel,BERTTokenClassificationModel,BERTQuestionAnsweringModel
+from .models import SimpleClassificationModel, BERTTextClassificationModel\
+                    ,BERTTokenClassificationModel,BERTQuestionAnsweringModel\
+                    ,SimpleTokenClassificationModel
 from .configs import create_default_config
 import configparser
 import pickle 
@@ -57,7 +59,10 @@ class TrainStrategy:
                 else:
                   self.model = BERTTextClassificationModel(self.model_config)
               elif task_name == 'ner':
-                self.model = BERTTokenClassificationModel(self.model_config)
+                if 'birnn' in model_name:
+                  self.model = SimpleTokenClassificationModel(self.model_config)
+                else:
+                  self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
                 self.model = BERTQuestionAnsweringModel(self.model_config)

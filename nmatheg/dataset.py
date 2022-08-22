@@ -41,10 +41,14 @@ def clean_dataset(dataset, config, data_config):
     dataset = cleaner.clean_hf_dataset(dataset, text)
     return dataset 
 
-def write_data_for_train(dataset, text):
+def write_data_for_train(dataset, text, task = 'cls'):
     data = []
-    for sample in dataset:
-        data.append(sample[text])    
+    if task == 'cls':
+      for sample in dataset:
+          data.append(sample[text])
+    else:
+      for sample in dataset:
+          data.append(' '.join(sample[text]))    
     open(f'data.txt', 'w').write(('\n').join(data))
 
 def create_dataset(config, data_config, vocab_size = 300, 
@@ -62,6 +66,9 @@ def create_dataset(config, data_config, vocab_size = 300,
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     dataset = load_dataset(dataset_name)
+    # dataset = dataset['train'].train_test_split(test_size=0.95, seed = 43)
+    # dataset.pop('test')
+
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
 
@@ -98,13 +105,33 @@ def create_dataset(config, data_config, vocab_size = 300,
 
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        if 'bert' in model_name:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            columns=['input_ids', 'attention_mask', 'labels']
+        else:
+            if tokenizer_name == 'bpe':
+                tokenizer = bpe(vocab_size = vocab_size)
+            elif tokenizer_name == 'bpe-morph': 
+                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
 
+            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
+            if os.path.isfile(f"{tok_save_path}/tok.model"):
+                print('loading pretrained tokenizer')
+                tokenizer.load(f"{tok_save_path}/")
+                dataset = load_from_disk(f'{tok_save_path}/data/')
+            else:
+                print('training tokenizer from scratch')
+                write_data_for_train(dataset['train'], data_config['text'], task = task_name)
+                tokenizer.train(file = 'data.txt')
+                tokenizer.save(f"{tok_save_path}/")
+                dataset.save_to_disk(f'{tok_save_path}/data/')                
+
+            columns=['input_ids', 'labels'] 
+        
         for split in dataset:
-            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, config, data_config)
+            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_name)
                                                 , batched=True, remove_columns=dataset[split].column_names)
-
-        columns=['input_ids', 'attention_mask', 'labels']
+        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     
     elif task_name == 'qa':
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
