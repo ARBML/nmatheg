@@ -1,12 +1,10 @@
 # Creating a class to pull the words from the columns and create them into sentences
-import torch 
 from datasets import Dataset, DatasetDict
 
 def aggregate_tokens(dataset, config, data_config, max_len = 128):
     new_dataset = {}
-    dataset_name = data_config['name']
-    token_col = data_config[dataset_name]['text']
-    tag_col = data_config[dataset_name]['label']
+    token_col = data_config['text']
+    tag_col = data_config['label']
 
     for split in dataset:
         sent_labels = []
@@ -29,9 +27,8 @@ def aggregate_tokens(dataset, config, data_config, max_len = 128):
 # https://github.com/huggingface/transformers/blob/44f5b260fe7a69cbd82be91b58c62a2879d530fa/examples/pytorch/token-classification/run_ner_no_trainer.py#L353
 def tokenize_and_align_labels(dataset, tokenizer, config, data_config, max_len = 128):
 
-    dataset_name = config['dataset']['dataset_name']
-    token_col = data_config[dataset_name]['text']
-    tag_col = data_config[dataset_name]['label']
+    token_col = data_config['text']
+    tag_col = data_config['label']
 
     tokenized_inputs = tokenizer(
         dataset[token_col],

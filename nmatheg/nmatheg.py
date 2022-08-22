@@ -7,7 +7,7 @@ import configparser
 import pickle 
 
 class TrainStrategy:
-  def __init__(self, datasets, models, vocab_sizes, tokenizers,
+  def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',
                config_path= None,  batch_size = 64, epochs = 5, lr = 5e-5, runs = 10):
 
     if config_path == None:

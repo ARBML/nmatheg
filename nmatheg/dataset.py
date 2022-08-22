@@ -94,7 +94,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
         
-            dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
 
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
