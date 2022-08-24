@@ -46,9 +46,13 @@ def write_data_for_train(dataset, text, task = 'cls'):
     if task == 'cls':
       for sample in dataset:
           data.append(sample[text])
-    else:
+    elif task == 'ner':
       for sample in dataset:
-          data.append(' '.join(sample[text]))    
+          data.append(' '.join(sample[text]))
+    elif task == 'qa':
+      for sample in dataset:
+          context, question = text.split(",")
+          data.append(sample[context]+" "+sample[question])    
     open(f'data.txt', 'w').write(('\n').join(data))
 
 def create_dataset(config, data_config, vocab_size = 300, 
