@@ -84,7 +84,7 @@ class TrainStrategy:
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
               if task_name == 'mt':
-                metrics = self.model.train(self.datasets, self.examples, tokenizer **self.train_config) 
+                metrics = self.model.train(self.datasets, self.examples, tokenizer, **self.train_config) 
               else:
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
