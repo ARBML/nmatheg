@@ -3,7 +3,8 @@ import os
 from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,BERTTokenClassificationModel,BERTQuestionAnsweringModel\
-                    ,SimpleTokenClassificationModel,SimpleQuestionAnsweringModel
+                    ,SimpleTokenClassificationModel,SimpleQuestionAnsweringModel\
+                    ,SimpleMachineTranslationModel,T5MachineTranslationModel
 from .configs import create_default_config
 import configparser
 import pickle 
@@ -69,6 +70,8 @@ class TrainStrategy:
                   self.model = SimpleQuestionAnsweringModel(self.model_config)
                 else:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
+              elif task_name == 'mt':
+                self.model = T5MachineTranslationModel(self.model_config)
               
               try: tokenizer_name = tokenizer.name 
               except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
@@ -80,7 +83,10 @@ class TrainStrategy:
                                   'runs':run}
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
-              metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+              if task_name == 'mt':
+                metrics = self.model.train(self.datasets, self.examples, tokenizer **self.train_config) 
+              else:
+                metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
               for metric_name in metrics:
                 if model_name == model_names[0]:

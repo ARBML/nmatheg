@@ -2,6 +2,8 @@ tnkeeh
 tkseem
 tfds-nightly
 datasets
-transformers
+transformers[sentencepiece]
 accelerate
 seqeval
+sacrebleu
+evaluate

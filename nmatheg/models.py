@@ -3,7 +3,9 @@ from transformers import (
     AutoConfig,
     AutoModelForTokenClassification,
     AutoModelForQuestionAnswering,
+    AutoModelForSeq2SeqLM,
     get_linear_schedule_with_warmup)
+from evaluate import load
 import os
 import time
 import numpy as np
@@ -426,6 +428,153 @@ class SimpleQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):
         BaseQuestionAnsweringModel.__init__(self, config)
         self.model = BiRNNForQuestionAnswering(self.vocab_size, self.num_labels)
+        self.model.to(self.device)  
+        # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
+
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()
+
+
+class BaseMachineTranslationModel:
+    def __init__(self, config):
+        self.model = nn.Module()
+        self.model_name = config['model_name']
+        self.vocab_size = config['vocab_size']
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.accelerator = Accelerator()
+
+    def train(self, datasets, tokenizer,  **kwargs):
+        save_dir = kwargs['save_dir']
+        epochs = kwargs['epochs']
+        lr = kwargs['lr']
+        batch_size = kwargs['batch_size']
+
+        self.optimizer = AdamW(self.model.parameters(), lr = lr)
+        self.tokenizer = tokenizer
+        self.metric = load("sacrebleu")
+        train_dataset, valid_dataset, test_dataset = datasets
+
+        filepath = os.path.join(save_dir, 'model.pth')
+        best_accuracy = 0 
+        
+        for epoch in range(epochs):
+            loss = 0 
+            self.model.train().to(self.device)
+            for _, batch in enumerate(train_dataset):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                loss = outputs['loss']
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+                loss += loss / len(train_dataset)
+                batch = None
+            train_metrics = self.evaluate_dataset(train_dataset)
+            print(f"Epoch {epoch} Train Loss {loss:.4f} Train BLEU {train_metrics['bleu']:.4f}")
+            
+            self.model.eval().to(self.device)
+            valid_metrics = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid BLEU {valid_metrics['bleu']:.4f}")
+
+            val_accuracy = valid_metrics['f1']
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
+                torch.save(self.model.state_dict(), filepath)
+        
+        self.model.load_state_dict(torch.load(filepath))
+        self.model.eval()
+        test_metrics = self.evaluate_dataset(test_dataset, batch_size=batch_size)
+        print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test BLEU {test_metrics['bleu']:.4f}")
+        return {'bleu':test_metrics['bleu']}
+        
+    def evaluate_dataset(self, dataset):
+        loss = 0 
+        bleu_score = 0
+        for _, batch in enumerate(dataset):
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            outputs = self.model(**batch)
+            generated_tokens = self.model.generate(batch['input_ids'])
+            labels = batch['labels']
+            loss = outputs['loss']
+            metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
+            bleu_score += metric['bleu'] / len(dataset)
+            loss += loss / len(dataset)
+        
+        return {'loss':loss, 'bleu':bleu_score}
+
+    def compute_metrics(self, preds, labels):
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
+
+        # Replace -100 in the labels as we can't decode them.
+        labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
+        result = {"bleu": result["score"]}
+
+        prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
+        result["gen_len"] = np.mean(prediction_lens)
+        result = {k: round(v, 4) for k, v in result.items()}
+        return result
+
+class T5MachineTranslationModel(BaseMachineTranslationModel):
+    def __init__(self, config):
+        BaseMachineTranslationModel.__init__(self, config)
+        config = AutoConfig.from_pretrained(self.model_name)
+        self.model =  AutoModelForSeq2SeqLM.from_pretrained(self.model_name, config = config)
+    
+    def wipe_memory(self):
+        self.model = None  
+        self.optimizer = None 
+        torch.cuda.empty_cache()
+
+class BiRNNForMachineTranslation(nn.Module):
+    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
+        
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.qa_outputs = nn.Linear(hidden_dim, 2)
+        self.hidden_dim = hidden_dim
+        self.num_labels = num_labels
+        
+    def forward(self, 
+                input_ids,
+                labels,
+                start_positions = None,
+                end_positions = None):
+
+        embedded = self.embedding(input_ids)        
+        out,h = self.bigru1(embedded)
+        out,h = self.bigru2(out)
+        out,h = self.bigru3(out)
+        logits = self.fc(out)
+        hidden_states = self.qa_outputs(hidden_states)  # (bs, max_query_len, 2)
+        start_logits, end_logits = logits.split(1, dim=-1)
+        start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
+        end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
+        loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
+        return {'loss':loss,
+                'logits':logits} 
+    
+    def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
+        loss_fct = nn.CrossEntropyLoss(ignore_index=None)
+        start_loss = loss_fct(start_logits, start_positions)
+        end_loss = loss_fct(end_logits, end_positions)
+        total_loss = (start_loss + end_loss) / 2
+        return total_loss
+
+class SimpleMachineTranslationModel(BaseMachineTranslationModel):
+    def __init__(self, config):
+        SimpleMachineTranslationModel.__init__(self, config)
+        self.model = BiRNNForMachineTranslation(self.vocab_size, self.num_labels)
         self.model.to(self.device)  
         # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 
