@@ -69,7 +69,10 @@ def create_dataset(config, data_config, vocab_size = 300,
     # clean and load data
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
-    dataset = load_dataset(dataset_name)
+    try:
+        dataset = load_dataset(dataset_name, data_config['subset'])
+    except:
+        dataset = load_dataset(dataset_name)
 
     if task_name != 'qa':
         dataset = clean_dataset(dataset, config, data_config)
@@ -162,14 +165,14 @@ def create_dataset(config, data_config, vocab_size = 300,
           dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
-        prefix = "translate English to Romanian: "
-        source_lang = "en"
-        target_lang = "ro"
+        prefix = "translate Romanian to English: "
+        source_lang, target_lang = data_config['subset'].split("-")
 
         if 'bert' in model_name:
+             
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-            inputs = [prefix + ex[source_lang] for ex in dataset["translation"]]
-            targets = [ex[target_lang] for ex in dataset["translation"]]
+            inputs = [prefix + ex[source_lang] for ex in dataset[data_config['text']]]
+            targets = [ex[target_lang] for ex in dataset[data_config['text']]]
             dataset = tokenizer(inputs, max_length=128, truncation=True, padding = 'max_length')
 
             # Setup the tokenizer for targets
