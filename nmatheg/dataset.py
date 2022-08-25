@@ -74,7 +74,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     except:
         dataset = load_dataset(dataset_name)
 
-    if task_name != 'qa' or task_name != 'mt':
+    if task_name != 'qa' and task_name != 'mt':
         dataset = clean_dataset(dataset, config, data_config)
 
     dataset = split_dataset(dataset, data_config)
