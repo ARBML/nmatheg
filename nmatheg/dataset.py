@@ -168,7 +168,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         prefix = "translate Romanian to English: "
         source_lang, target_lang = data_config['subset'].split("-")
 
-        if 'bert' in model_name:
+        if 't5' in model_name:
              
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             inputs = [prefix + ex[source_lang] for ex in dataset[data_config['text']]]
