@@ -445,7 +445,7 @@ class BaseMachineTranslationModel:
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.accelerator = Accelerator()
 
-    def train(self, datasets, tokenizer,  **kwargs):
+    def train(self, datasets, examples, tokenizer,  **kwargs):
         save_dir = kwargs['save_dir']
         epochs = kwargs['epochs']
         lr = kwargs['lr']
