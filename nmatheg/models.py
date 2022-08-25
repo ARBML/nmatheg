@@ -521,7 +521,7 @@ class BaseMachineTranslationModel:
         result = {k: round(v, 4) for k, v in result.items()}
         return result
 
-class BERTQuestionAnsweringModel(BaseMachineTranslationModel):
+class T5QuestionAnsweringModel(BaseMachineTranslationModel):
     def __init__(self, config):
         BaseMachineTranslationModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name)
