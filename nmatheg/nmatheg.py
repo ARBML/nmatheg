@@ -80,7 +80,10 @@ class TrainStrategy:
                                   'runs':run}
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
-              metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+              if task_name == 'mt':
+                metrics = self.model.train(self.datasets, self.examples, tokenizer **self.train_config) 
+              else:
+                metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
               for metric_name in metrics:
                 if model_name == model_names[0]:
