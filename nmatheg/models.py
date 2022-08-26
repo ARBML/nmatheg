@@ -479,7 +479,7 @@ class BaseMachineTranslationModel:
             valid_metrics = self.evaluate_dataset(valid_dataset)
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid BLEU {valid_metrics['bleu']:.4f}")
 
-            val_accuracy = valid_metrics['f1']
+            val_accuracy = valid_metrics['bleu']
             if val_accuracy > best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)

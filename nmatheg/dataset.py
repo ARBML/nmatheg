@@ -73,7 +73,8 @@ def create_dataset(config, data_config, vocab_size = 300,
         dataset = load_dataset(dataset_name, data_config['subset'])
     except:
         dataset = load_dataset(dataset_name)
-
+    
+    print(dataset)
     if task_name != 'qa' and task_name != 'mt':
         dataset = clean_dataset(dataset, config, data_config)
 
@@ -165,8 +166,8 @@ def create_dataset(config, data_config, vocab_size = 300,
           dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
-        prefix = "translate Romanian to English: "
-        source_lang, target_lang = data_config['subset'].split("-")
+        prefix = "translate English to Arabic: "
+        source_lang, target_lang = data_config['text'].split(",")
 
         if 't5' in model_name:
              
