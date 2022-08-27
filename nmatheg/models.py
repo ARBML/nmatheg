@@ -6,6 +6,8 @@ from transformers import (
     AutoModelForSeq2SeqLM,
     get_linear_schedule_with_warmup)
 from evaluate import load
+import random 
+import torch.nn.functional as F
 import os
 import time
 import numpy as np
@@ -442,8 +444,8 @@ class BaseMachineTranslationModel:
         self.model = nn.Module()
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
+        self.num_labels = config['num_labels']
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        self.accelerator = Accelerator()
 
     def train(self, datasets, examples, tokenizer,  **kwargs):
         save_dir = kwargs['save_dir']
@@ -508,18 +510,47 @@ class BaseMachineTranslationModel:
     def compute_metrics(self, preds, labels):
         if isinstance(preds, tuple):
             preds = preds[0]
-        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
+        
+        if 't5' in self.model_name:
+          decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
 
-        # Replace -100 in the labels as we can't decode them.
-        labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
-        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
-        result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
-        result = {"bleu": result["score"]}
+          # Replace -100 in the labels as we can't decode them.
+          labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+          decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+          result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
+          result = {"bleu": result["score"]}
+          result = {k: round(v, 4) for k, v in result.items()}
+          return result
+        else:
+          
+          preds = self.get_lists(preds)
+          labels  = self.get_lists(labels)
+          
+          decoded_preds = self.tokenizer.decode(preds)
+          decoded_preds = [' '.join(tokens) for tokens in decoded_preds]
+          # Replace -100 in the labels as we can't decode them.
+          # labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+          decoded_labels = self.tokenizer.decode(labels)
+          decoded_labels = [[' '.join(tokens)] for tokens in decoded_labels]
 
-        prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
-        result["gen_len"] = np.mean(prediction_lens)
-        result = {k: round(v, 4) for k, v in result.items()}
-        return result
+          result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
+          result = {"bleu": result["score"]}
+          result = {k: round(v, 4) for k, v in result.items()}
+          return result
+    
+    def get_lists(self, inputs):
+        inputs = inputs.cpu().detach().numpy().astype(int).tolist()
+        output = []
+        for input in inputs:
+          current_item =[]
+          for item in input:
+            if item == 4:
+              break
+            else:
+              current_item.append(item)
+          output.append(current_item)
+        return output
+
 
 class T5MachineTranslationModel(BaseMachineTranslationModel):
     def __init__(self, config):
@@ -532,49 +563,193 @@ class T5MachineTranslationModel(BaseMachineTranslationModel):
         self.optimizer = None 
         torch.cuda.empty_cache()
 
-class BiRNNForMachineTranslation(nn.Module):
-    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
-        
+#https://colab.research.google.com/github/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb#scrollTo=dCK3LIN25n_S
+class Encoder(nn.Module):
+    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout):
         super().__init__()
         
-        self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
-        self.qa_outputs = nn.Linear(hidden_dim, 2)
-        self.hidden_dim = hidden_dim
-        self.num_labels = num_labels
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
         
-    def forward(self, 
-                input_ids,
-                labels,
-                start_positions = None,
-                end_positions = None):
+        self.embedding = nn.Embedding(input_dim, emb_dim)
+        
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout = dropout)
+        
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, src):
+        
+        #src = [src len, batch size]
+        
+        embedded = self.dropout(self.embedding(src))
+        
+        #embedded = [src len, batch size, emb dim]
+        
+        outputs, (hidden, cell) = self.rnn(embedded)
+        
+        #outputs = [src len, batch size, hid dim * n directions]
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #outputs are always from the top hidden layer
+        
+        return hidden, cell
+class Decoder(nn.Module):
+    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, dropout):
+        super().__init__()
+        
+        self.output_dim = output_dim
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+        
+        self.embedding = nn.Embedding(output_dim, emb_dim)
+        
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout = dropout)
+        
+        self.fc_out = nn.Linear(hid_dim, output_dim)
+        
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, input, hidden, cell):
+        
+        #input = [batch size]
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #n directions in the decoder will both always be 1, therefore:
+        #hidden = [n layers, batch size, hid dim]
+        #context = [n layers, batch size, hid dim]
+        
+        input = input.unsqueeze(0)
+        
+        #input = [1, batch size]
+        
+        embedded = self.dropout(self.embedding(input))
+        
+        #embedded = [1, batch size, emb dim]
+                
+        output, (hidden, cell) = self.rnn(embedded, (hidden, cell))
+        
+        #output = [seq len, batch size, hid dim * n directions]
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #seq len and n directions will always be 1 in the decoder, therefore:
+        #output = [1, batch size, hid dim]
+        #hidden = [n layers, batch size, hid dim]
+        #cell = [n layers, batch size, hid dim]
+        
+        prediction = self.fc_out(output.squeeze(0))
+        
+        #prediction = [batch size, output dim]
+        
+        return prediction, hidden, cell
 
-        embedded = self.embedding(input_ids)        
-        out,h = self.bigru1(embedded)
-        out,h = self.bigru2(out)
-        out,h = self.bigru3(out)
-        logits = self.fc(out)
-        hidden_states = self.qa_outputs(hidden_states)  # (bs, max_query_len, 2)
-        start_logits, end_logits = logits.split(1, dim=-1)
-        start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
-        end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
-        loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
-        return {'loss':loss,
-                'logits':logits} 
+class Seq2SeqMachineTranslation(nn.Module):
+    def __init__(self, vocab_size = 500):
+        super().__init__()
+        ENC_EMB_DIM = 256
+        DEC_EMB_DIM = 256
+        HID_DIM = 512
+        N_LAYERS = 2
+        ENC_DROPOUT = 0.5
+        DEC_DROPOUT = 0.5
+        INPUT_DIM = vocab_size
+        OUTPUT_DIM = vocab_size
+        self.vocab_size = vocab_size
+        self.encoder = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, N_LAYERS, ENC_DROPOUT)
+        self.decoder = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS, DEC_DROPOUT)
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        
+        assert self.encoder.hid_dim == self.decoder.hid_dim, \
+            "Hidden dimensions of encoder and decoder must be equal!"
+        assert self.encoder.n_layers == self.decoder.n_layers, \
+            "Encoder and decoder must have equal number of layers!"
+        
+    def forward(self, input_ids, labels = None, teacher_forcing_ratio = 0.5):
+        
+        src = input_ids
+        trg = labels
+        generated_tokens = []
+        #src = [src len, batch size]
+        #trg = [trg len, batch size]
+        #teacher_forcing_ratio is probability to use teacher forcing
+        #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time          
+        if trg is None:
+          batch_size = input_ids.shape[1]
+          trg_len = input_ids.shape[0]
+        else:
+          batch_size = trg.shape[1]
+          trg_len = trg.shape[0]
+
+        trg_vocab_size = self.decoder.output_dim
+        
+        #tensor to store decoder outputs
+        outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
+        generated_tokens = torch.zeros(trg_len, batch_size).to(self.device)
+        #last hidden state of the encoder is used as the initial hidden state of the decoder
+        hidden, cell = self.encoder(src)
+        
+        #first input to the decoder is the <sos> tokens          
+        if trg is None:
+          input = torch.tensor([3]*batch_size).to(self.device)
+        else:
+          input = trg[0,:]
+
+        for t in range(1, trg_len):
+            
+            #insert input token embedding, previous hidden and previous cell states
+            #receive output tensor (predictions) and new hidden and cell states
+            output, hidden, cell = self.decoder(input, hidden, cell)
+            
+            #place predictions in a tensor holding predictions for each token
+            outputs[t] = output
+            
+            #decide if we are going to use teacher forcing or not
+            teacher_force = random.random() < teacher_forcing_ratio
+            
+            #get the highest predicted token from our predictions
+            top1 = output.argmax(1) 
+            
+            #if teacher forcing, use actual next token as next input
+            #if not, use predicted token
+            
+            if trg is not None:
+              input = trg[t] if teacher_force else top1
+            else:
+              input = top1
+
+            generated_tokens[t] = top1
+        
+        
+        if trg is not None :
+          loss = self.compute_loss(outputs, trg)
+          return {'loss':loss,
+                'logits':outputs} 
+        else:
+          return {'generated_tokens': generated_tokens}
     
-    def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
-        loss_fct = nn.CrossEntropyLoss(ignore_index=None)
-        start_loss = loss_fct(start_logits, start_positions)
-        end_loss = loss_fct(end_logits, end_positions)
-        total_loss = (start_loss + end_loss) / 2
-        return total_loss
+    def generate(self, input_ids):
+        generated_tokens = self.forward(input_ids = input_ids)
+        return generated_tokens['generated_tokens']
+
+    def compute_loss(self, output, trg):
+        loss_fct = nn.CrossEntropyLoss()
+        output_dim = output.shape[-1]
+        output = output[1:].view(-1, output_dim)
+        trg = trg[1:].view(-1)
+        
+        #trg = [(trg len - 1) * batch size]
+        #output = [(trg len - 1) * batch size, output dim]
+        
+        loss = loss_fct(output, trg)
+        return loss
+
 
 class SimpleMachineTranslationModel(BaseMachineTranslationModel):
     def __init__(self, config):
-        SimpleMachineTranslationModel.__init__(self, config)
-        self.model = BiRNNForMachineTranslation(self.vocab_size, self.num_labels)
+        BaseMachineTranslationModel.__init__(self, config)
+        self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size)
         self.model.to(self.device)  
         # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 

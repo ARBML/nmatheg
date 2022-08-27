@@ -52,7 +52,12 @@ def write_data_for_train(dataset, text, task = 'cls'):
     elif task == 'qa':
       for sample in dataset:
           context, question = text.split(",")
-          data.append(sample[context]+" "+sample[question])    
+          data.append(sample[context]+" "+sample[question])
+    elif task == 'mt':
+      for sample in dataset:
+          context, question = text.split(",")
+          data.append(sample[context]+" "+sample[question])
+
     open(f'data.txt', 'w').write(('\n').join(data))
 
 def create_dataset(config, data_config, vocab_size = 300, 
@@ -167,14 +172,14 @@ def create_dataset(config, data_config, vocab_size = 300,
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
-        source_lang, target_lang = data_config['text'].split(",")
+        src_lang, trg_lang = data_config['text'].split(",")
 
         if 't5' in model_name:
              
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             def preprocess(dataset):
-                inputs = [prefix + ex[source_lang] for ex in dataset[data_config['text']]]
-                targets = [ex[target_lang] for ex in dataset[data_config['text']]]
+                inputs = [prefix + ex[src_lang] for ex in dataset[data_config['text']]]
+                targets = [ex[trg_lang] for ex in dataset[data_config['text']]]
                 dataset = tokenizer(inputs, max_length=128, truncation=True, padding = 'max_length')
 
                 # Setup the tokenizer for targets
@@ -185,6 +190,35 @@ def create_dataset(config, data_config, vocab_size = 300,
                 return dataset
             dataset = dataset.map(preprocess, batched=True)
             columns = ['input_ids', 'attention_mask', 'labels']
+        else:
+            if tokenizer_name == 'bpe':
+                src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en')
+                trg_tokenizer = bpe(vocab_size = vocab_size, lang = 'ar')
+            elif tokenizer_name == 'bpe-morph':
+                src_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'en') 
+                trg_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'ar')
+
+            open('src_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
+            open('trg_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
+
+            src_tokenizer.train(file = 'src_data.txt')
+            trg_tokenizer.train(file = 'trg_data.txt')
+
+            def preprocess(dataset):
+                inputs = [prefix + ex for ex in dataset[src_lang]]
+                targets = [ex for ex in dataset[trg_lang]]
+                
+                input_ids = src_tokenizer.encode_sentences(inputs, out_length = 128, add_boundry = True)
+                labels = trg_tokenizer.encode_sentences(targets, out_length = 128, add_boundry = True)
+                dataset = dataset.add_column("input_ids", input_ids)
+                dataset = dataset.add_column("labels", labels)
+                return dataset
+            
+            for split in dataset: 
+                dataset[split] = preprocess(dataset[split]) 
+
+            columns = ['input_ids', 'labels']
+            
     #create loaders 
     if task_name != 'qa': 
         for split in dataset:
