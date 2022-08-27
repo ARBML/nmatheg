@@ -218,6 +218,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset[split] = preprocess(dataset[split]) 
 
             columns = ['input_ids', 'labels']
+            tokenizer = trg_tokenizer
             
     #create loaders 
     if task_name != 'qa': 

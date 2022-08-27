@@ -526,12 +526,10 @@ class BaseMachineTranslationModel:
           preds = self.get_lists(preds)
           labels  = self.get_lists(labels)
           
-          decoded_preds = self.tokenizer.decode(preds)
-          decoded_preds = [' '.join(tokens) for tokens in decoded_preds]
-          # Replace -100 in the labels as we can't decode them.
-          # labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
-          decoded_labels = self.tokenizer.decode(labels)
-          decoded_labels = [[' '.join(tokens)] for tokens in decoded_labels]
+          decoded_preds = self.tokenizer.decode_sentences(preds)
+
+          decoded_labels = self.tokenizer.decode_sentences(labels)
+          decoded_labels = [[stmt] for stmt in decoded_labels]
 
           result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
           result = {"bleu": result["score"]}
