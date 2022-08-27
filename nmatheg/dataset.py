@@ -198,7 +198,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 src_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'en') 
                 trg_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'ar')
 
-            open('src_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
+            open('src_data.txt', 'w').write('\n'.join(dataset['validation'][src_lang]))
             open('trg_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
 
             src_tokenizer.train(file = 'src_data.txt')
