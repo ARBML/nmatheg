@@ -178,8 +178,8 @@ def create_dataset(config, data_config, vocab_size = 300,
              
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             def preprocess(dataset):
-                inputs = [prefix + ex[src_lang] for ex in dataset[data_config['text']]]
-                targets = [ex[trg_lang] for ex in dataset[data_config['text']]]
+                inputs = [prefix + ex for ex in dataset[src_lang]]
+                targets = [ex for ex in dataset[trg_lang]]
                 dataset = tokenizer(inputs, max_length=128, truncation=True, padding = 'max_length')
 
                 # Setup the tokenizer for targets
