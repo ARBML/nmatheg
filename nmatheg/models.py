@@ -551,8 +551,8 @@ class BaseMachineTranslationModel:
 
 
 class T5MachineTranslationModel(BaseMachineTranslationModel):
-    def __init__(self, config):
-        BaseMachineTranslationModel.__init__(self, config)
+    def __init__(self, config, tokenizer = None):
+        BaseMachineTranslationModel.__init__(self, config, tokenizer = tokenizer)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForSeq2SeqLM.from_pretrained(self.model_name, config = config)
     
@@ -744,9 +744,9 @@ class Seq2SeqMachineTranslation(nn.Module):
 
 
 class SimpleMachineTranslationModel(BaseMachineTranslationModel):
-    def __init__(self, config):
-        BaseMachineTranslationModel.__init__(self, config)
-        self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size, tokenizer = self.tokenizer)
+    def __init__(self, config, tokenizer = None):
+        BaseMachineTranslationModel.__init__(self, config, tokenizer = tokenizer)
+        self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size, tokenizer = tokenizer)
         self.model.to(self.device)  
         # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 
