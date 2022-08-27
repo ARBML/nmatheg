@@ -172,7 +172,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
-        src_lang, trg_lang = data_config['text'].split(",")
+        trg_lang, src_lang = data_config['text'].split(",")
 
         if 't5' in model_name:
              
