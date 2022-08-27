@@ -689,7 +689,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         
         #first input to the decoder is the <sos> tokens          
         if trg is None:
-          input = torch.tensor([self.tokenizer.sos]*batch_size).to(self.device)
+          input = torch.tensor([self.tokenizer.sos_idx]*batch_size).to(self.device)
         else:
           input = trg[0,:]
 
