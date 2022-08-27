@@ -440,21 +440,21 @@ class SimpleQuestionAnsweringModel(BaseQuestionAnsweringModel):
 
 
 class BaseMachineTranslationModel:
-    def __init__(self, config):
+    def __init__(self, config, tokenizer = None):
         self.model = nn.Module()
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
         self.num_labels = config['num_labels']
+        self.tokenizer = tokenizer 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    def train(self, datasets, examples, tokenizer,  **kwargs):
+    def train(self, datasets, examples,  **kwargs):
         save_dir = kwargs['save_dir']
         epochs = kwargs['epochs']
         lr = kwargs['lr']
         batch_size = kwargs['batch_size']
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
-        self.tokenizer = tokenizer
         self.metric = load("sacrebleu")
         train_dataset, valid_dataset, test_dataset = datasets
 

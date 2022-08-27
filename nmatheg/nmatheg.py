@@ -72,9 +72,9 @@ class TrainStrategy:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name == 'mt':
                 if 'seq2seq' in model_name:
-                  self.model = SimpleMachineTranslationModel(self.model_config)
+                  self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
                 else:
-                  self.model = T5MachineTranslationModel(self.model_config)
+                  self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
               
               try: tokenizer_name = tokenizer.name 
               except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
@@ -87,7 +87,7 @@ class TrainStrategy:
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
               if task_name == 'mt':
-                metrics = self.model.train(self.datasets, self.examples, tokenizer, **self.train_config) 
+                metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
               else:
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
