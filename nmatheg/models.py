@@ -542,7 +542,7 @@ class BaseMachineTranslationModel:
         for input in inputs:
           current_item =[]
           for item in input:
-            if item == 4:
+            if item == self.tokenizer.eos_idx:
               break
             else:
               current_item.append(item)
@@ -643,7 +643,7 @@ class Decoder(nn.Module):
         return prediction, hidden, cell
 
 class Seq2SeqMachineTranslation(nn.Module):
-    def __init__(self, vocab_size = 500):
+    def __init__(self, vocab_size = 500, tokenizer = None):
         super().__init__()
         ENC_EMB_DIM = 256
         DEC_EMB_DIM = 256
@@ -657,7 +657,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         self.encoder = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, N_LAYERS, ENC_DROPOUT)
         self.decoder = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS, DEC_DROPOUT)
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        
+        self.tokenizer = tokenizer 
         assert self.encoder.hid_dim == self.decoder.hid_dim, \
             "Hidden dimensions of encoder and decoder must be equal!"
         assert self.encoder.n_layers == self.decoder.n_layers, \
@@ -689,7 +689,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         
         #first input to the decoder is the <sos> tokens          
         if trg is None:
-          input = torch.tensor([3]*batch_size).to(self.device)
+          input = torch.tensor([self.tokenizer.sos]*batch_size).to(self.device)
         else:
           input = trg[0,:]
 
@@ -731,7 +731,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         return generated_tokens['generated_tokens']
 
     def compute_loss(self, output, trg):
-        loss_fct = nn.CrossEntropyLoss()
+        loss_fct = nn.CrossEntropyLoss(ignore_index = self.tokenizer.pad_idx)
         output_dim = output.shape[-1]
         output = output[1:].view(-1, output_dim)
         trg = trg[1:].view(-1)
@@ -746,7 +746,7 @@ class Seq2SeqMachineTranslation(nn.Module):
 class SimpleMachineTranslationModel(BaseMachineTranslationModel):
     def __init__(self, config):
         BaseMachineTranslationModel.__init__(self, config)
-        self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size)
+        self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size, tokenizer = self.tokenizer)
         self.model.to(self.device)  
         # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)
 
