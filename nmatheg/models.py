@@ -568,7 +568,6 @@ class Encoder(nn.Module):
         
         self.hid_dim = hid_dim
         self.n_layers = n_layers
-        print(input_dim , emb_dim)
         self.embedding = nn.Embedding(input_dim, emb_dim)
         
         self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout = dropout)

@@ -4,7 +4,7 @@ from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,BERTTokenClassificationModel,BERTQuestionAnsweringModel\
                     ,SimpleTokenClassificationModel,SimpleQuestionAnsweringModel\
-                    ,Seq2SeqMachineTranslation,T5MachineTranslationModel
+                    ,SimpleMachineTranslationModel,T5MachineTranslationModel
 from .configs import create_default_config
 import configparser
 import pickle 
@@ -72,7 +72,7 @@ class TrainStrategy:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name == 'mt':
                 if 'seq2seq' in model_name:
-                  self.model = Seq2SeqMachineTranslation(self.model_config)
+                  self.model = SimpleMachineTranslationModel(self.model_config)
                 else:
                   self.model = T5MachineTranslationModel(self.model_config)
               
