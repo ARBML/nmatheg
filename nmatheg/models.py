@@ -497,8 +497,12 @@ class BaseMachineTranslationModel:
         bleu_score = 0
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
-            outputs = self.model(**batch)
-            generated_tokens = self.model.generate(batch['input_ids'])
+            if self.model_name == "seq2seq":
+              outputs = self.model(**batch, mode ="generate")
+              generated_tokens = outputs['outputs']
+            else:
+              outputs = self.model(**batch)
+              generated_tokens = self.model.generate(batch['input_ids'])
             labels = batch['labels']
             loss = outputs['loss']
             metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
@@ -550,6 +554,7 @@ class BaseMachineTranslationModel:
         return output
 
 
+
 class T5MachineTranslationModel(BaseMachineTranslationModel):
     def __init__(self, config, tokenizer = None):
         BaseMachineTranslationModel.__init__(self, config, tokenizer = tokenizer)
@@ -563,22 +568,21 @@ class T5MachineTranslationModel(BaseMachineTranslationModel):
 
 #https://colab.research.google.com/github/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb#scrollTo=dCK3LIN25n_S
 class Encoder(nn.Module):
-    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout):
+    def __init__(self, input_dim, emb_dim, hid_dim, n_layers):
         super().__init__()
         
         self.hid_dim = hid_dim
         self.n_layers = n_layers
+        
         self.embedding = nn.Embedding(input_dim, emb_dim)
         
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout = dropout)
-        
-        self.dropout = nn.Dropout(dropout)
-        
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers)
+                
     def forward(self, src):
         
         #src = [src len, batch size]
         
-        embedded = self.dropout(self.embedding(src))
+        embedded = self.embedding(src)
         
         #embedded = [src len, batch size, emb dim]
         
@@ -592,7 +596,7 @@ class Encoder(nn.Module):
         
         return hidden, cell
 class Decoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, dropout):
+    def __init__(self, output_dim, emb_dim, hid_dim, n_layers):
         super().__init__()
         
         self.output_dim = output_dim
@@ -601,11 +605,10 @@ class Decoder(nn.Module):
         
         self.embedding = nn.Embedding(output_dim, emb_dim)
         
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout = dropout)
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers)
         
         self.fc_out = nn.Linear(hid_dim, output_dim)
         
-        self.dropout = nn.Dropout(dropout)
         
     def forward(self, input, hidden, cell):
         
@@ -621,7 +624,7 @@ class Decoder(nn.Module):
         
         #input = [1, batch size]
         
-        embedded = self.dropout(self.embedding(input))
+        embedded = self.embedding(input)
         
         #embedded = [1, batch size, emb dim]
                 
@@ -645,17 +648,15 @@ class Decoder(nn.Module):
 class Seq2SeqMachineTranslation(nn.Module):
     def __init__(self, vocab_size = 500, tokenizer = None):
         super().__init__()
-        ENC_EMB_DIM = 256
-        DEC_EMB_DIM = 256
-        HID_DIM = 512
-        N_LAYERS = 2
-        ENC_DROPOUT = 0.5
-        DEC_DROPOUT = 0.5
+        ENC_EMB_DIM = 128
+        DEC_EMB_DIM = 128
+        HID_DIM = 2084
+        N_LAYERS = 1
         INPUT_DIM = vocab_size
         OUTPUT_DIM = vocab_size
         self.vocab_size = vocab_size
-        self.encoder = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, N_LAYERS, ENC_DROPOUT)
-        self.decoder = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS, DEC_DROPOUT)
+        self.encoder = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, N_LAYERS)
+        self.decoder = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS)
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.tokenizer = tokenizer 
         assert self.encoder.hid_dim == self.decoder.hid_dim, \
@@ -663,79 +664,61 @@ class Seq2SeqMachineTranslation(nn.Module):
         assert self.encoder.n_layers == self.decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
-    def forward(self, input_ids, labels = None, teacher_forcing_ratio = 0.5):
-        
-        src = input_ids
-        trg = labels
-        generated_tokens = []
+    def forward(self, input_ids, labels, teacher_forcing_ratio = 0.0, mode = "train"):
+        src = torch.transpose(input_ids, 0, 1)
+        trg = torch.transpose(labels, 0, 1)
+
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
-        #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time          
-        if trg is None:
-          batch_size = input_ids.shape[1]
-          trg_len = input_ids.shape[0]
-        else:
-          batch_size = trg.shape[1]
-          trg_len = trg.shape[0]
+        #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
+
+        batch_size = trg.shape[1]
+        trg_len = trg.shape[0]
 
         trg_vocab_size = self.decoder.output_dim
         
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
-        generated_tokens = torch.zeros(trg_len, batch_size).to(self.device)
         #last hidden state of the encoder is used as the initial hidden state of the decoder
         hidden, cell = self.encoder(src)
         
         #first input to the decoder is the <sos> tokens          
-        if trg is None:
-          input = torch.tensor([self.tokenizer.sos_idx]*batch_size).to(self.device)
-        else:
-          input = trg[:,0]
-
+        input = torch.tensor([self.tokenizer.sos_idx]*batch_size).to(self.device)
+        
         for t in range(1, trg_len):
             
             #insert input token embedding, previous hidden and previous cell states
             #receive output tensor (predictions) and new hidden and cell states
             output, hidden, cell = self.decoder(input, hidden, cell)
             
-            #place predictions in a tensor holding predictions for each token
-            outputs[t] = output
-            
             #decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
-            
+
             #get the highest predicted token from our predictions
             top1 = output.argmax(1) 
             
             #if teacher forcing, use actual next token as next input
             #if not, use predicted token
             
-            if trg is not None:
-              input = trg[t] if teacher_force else top1
+            if mode == "train" and teacher_force:
+              input = trg[t]
             else:
               input = top1
-
-            generated_tokens[t] = top1
+            
+            outputs[t] = output
         
         
-        if trg is not None :
-          loss = self.compute_loss(outputs, trg)
-          return {'loss':loss,
-                'logits':outputs} 
-        else:
-          return {'generated_tokens': generated_tokens}
-    
-    def generate(self, input_ids):
-        generated_tokens = self.forward(input_ids = input_ids)
-        return generated_tokens['generated_tokens']
+        loss = self.compute_loss(outputs, trg)
+        return {'loss':loss,
+              'outputs':torch.transpose(outputs.argmax(-1), 0, 1)
+              } 
 
     def compute_loss(self, output, trg):
         loss_fct = nn.CrossEntropyLoss(ignore_index = self.tokenizer.pad_idx)
         output_dim = output.shape[-1]
         output = output[1:].view(-1, output_dim)
-        trg = trg[1:].view(-1)
-        
+        trg = trg[1:].reshape(-1)
         #trg = [(trg len - 1) * batch size]
         #output = [(trg len - 1) * batch size, output dim]
         

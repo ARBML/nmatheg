@@ -11,7 +11,7 @@ import pickle
 
 class TrainStrategy:
   def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',
-               config_path= None,  batch_size = 64, epochs = 5, lr = 5e-5, runs = 10):
+               config_path= None,  batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128):
 
     if config_path == None:
       self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs)
@@ -19,6 +19,7 @@ class TrainStrategy:
       self.config['model'] = {'model_name' : models}
       self.config['tokenization']['vocab_size'] = vocab_sizes
       self.config['tokenization']['tokenizer_name'] = tokenizers
+      self.config['tokenization']['max_tokens'] = max_tokens
     else:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)

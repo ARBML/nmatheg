@@ -202,7 +202,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en')
                 trg_tokenizer = bpe(vocab_size = vocab_size, lang = 'ar')
             elif tokenizer_name == 'bpe-morph':
-                src_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'en') 
+                src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en') 
                 trg_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'ar')
 
             open('src_data.txt', 'w').write('\n'.join(dataset['validation'][src_lang]))
@@ -215,8 +215,8 @@ def create_dataset(config, data_config, vocab_size = 300,
                 inputs = [prefix + ex for ex in dataset[src_lang]]
                 targets = [ex for ex in dataset[trg_lang]]
                 
-                input_ids = src_tokenizer.encode_sentences(inputs, out_length = 128, add_boundry = True)
-                labels = trg_tokenizer.encode_sentences(targets, out_length = 128, add_boundry = True)
+                input_ids = src_tokenizer.encode_sentences(inputs, out_length = max_tokens, add_boundry = True)
+                labels = trg_tokenizer.encode_sentences(targets, out_length = max_tokens, add_boundry = True)
                 dataset = dataset.add_column("input_ids", input_ids)
                 dataset = dataset.add_column("labels", labels)
                 return dataset
