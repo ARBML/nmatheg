@@ -75,6 +75,13 @@ def create_dataset(config, data_config, vocab_size = 300,
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     try:
+        if dataset_name == "tatoeba_mt":
+            print("downloading tatoeba_mt manually ... ")
+            clone = "git lfs clone https://huggingface.co/datasets/Helsinki-NLP/tatoeba_mt"
+            wget = "wget https://huggingface.co/datasets/Zaid/tatoeba_mt/raw/main/tatoeba_mt.py -O tatoeba_mt/tatoeba_mt.py"
+
+            os.system(f"{clone} && {wget}")
+
         dataset = load_dataset(dataset_name, data_config['subset'])
     except:
         dataset = load_dataset(dataset_name)

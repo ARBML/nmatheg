@@ -691,7 +691,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         if trg is None:
           input = torch.tensor([self.tokenizer.sos_idx]*batch_size).to(self.device)
         else:
-          input = trg[0,:]
+          input = trg[:,0]
 
         for t in range(1, trg_len):
             
