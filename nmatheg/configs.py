@@ -1,5 +1,5 @@
 import configparser
-def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10):
+def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 64):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -18,7 +18,7 @@ def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10):
     }
 
     config['tokenization'] = {
-        'max_tokens' : 128,
+        'max_tokens' : max_tokens,
         'tok_save_path': 'ckpts'
     }
 

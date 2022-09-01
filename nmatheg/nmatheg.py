@@ -14,12 +14,11 @@ class TrainStrategy:
                config_path= None,  batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128):
 
     if config_path == None:
-      self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs)
+      self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs, max_tokens=max_tokens)
       self.config['dataset'] = {'dataset_name' : datasets}
       self.config['model'] = {'model_name' : models}
       self.config['tokenization']['vocab_size'] = vocab_sizes
       self.config['tokenization']['tokenizer_name'] = tokenizers
-      self.config['tokenization']['max_tokens'] = max_tokens
     else:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)
