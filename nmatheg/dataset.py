@@ -91,13 +91,13 @@ def create_dataset(config, data_config, vocab_size = 300,
     except:
         dataset = load_dataset(dataset_name)
     
-    print(dataset)
+    
     if task_name != 'qa' and task_name != 'mt':
         dataset = clean_dataset(dataset, config, data_config)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
-
+    print(dataset)
     if task_name == 'cls':
         # tokenize data
         if 'bert' in model_name:
