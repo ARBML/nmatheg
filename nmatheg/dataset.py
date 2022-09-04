@@ -187,7 +187,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         prefix = "translate English to Arabic: "
         trg_lang, src_lang = data_config['text'].split(",")
 
-        if 't5' in model_name:
+        if 'T5' in model_name:
              
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             def preprocess(dataset):
