@@ -515,7 +515,7 @@ class BaseMachineTranslationModel:
         if isinstance(preds, tuple):
             preds = preds[0]
         
-        if 't5' in self.model_name:
+        if 'T5' in self.model_name:
           decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
 
           # Replace -100 in the labels as we can't decode them.
