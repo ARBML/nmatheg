@@ -205,24 +205,39 @@ def create_dataset(config, data_config, vocab_size = 300,
                 src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en') 
                 trg_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'ar')
 
-            open('src_data.txt', 'w').write('\n'.join(dataset['validation'][src_lang]))
-            open('trg_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
+            tok_save_path = f"{save_dir}/{trg_tokenizer.name}/{dataset_name}/"
 
-            src_tokenizer.train(file = 'src_data.txt')
-            trg_tokenizer.train(file = 'trg_data.txt')
+            if os.path.isfile(f"{tok_save_path}/trg_tok.model"):
+                print('loading pretrained tokenizers')
+                src_tokenizer.load(f"{tok_save_path}/", name = "src_tok")
+                trg_tokenizer.load(f"{tok_save_path}/", name = "trg_tok")
+                dataset = load_from_disk(f'{tok_save_path}/data/')
+            else:
+                print('training tokenizer from scratch')
+                open('src_data.txt', 'w').write('\n'.join(dataset['validation'][src_lang]))
+                open('trg_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
 
-            def preprocess(dataset):
-                inputs = [prefix + ex for ex in dataset[src_lang]]
-                targets = [ex for ex in dataset[trg_lang]]
+                src_tokenizer.train(file = 'src_data.txt')
+                trg_tokenizer.train(file = 'trg_data.txt')
+                src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
+                trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
+
+
+                def preprocess(dataset):
+                    inputs = [ex for ex in dataset[src_lang]]
+                    targets = [ex for ex in dataset[trg_lang]]
+                    
+                    input_ids = src_tokenizer.encode_sentences(inputs, out_length = max_tokens, add_boundry = True)
+                    labels = trg_tokenizer.encode_sentences(targets, out_length = max_tokens, add_boundry = True)
+                    dataset = dataset.add_column("input_ids", input_ids)
+                    dataset = dataset.add_column("labels", labels)
+                    return dataset
                 
-                input_ids = src_tokenizer.encode_sentences(inputs, out_length = max_tokens, add_boundry = True)
-                labels = trg_tokenizer.encode_sentences(targets, out_length = max_tokens, add_boundry = True)
-                dataset = dataset.add_column("input_ids", input_ids)
-                dataset = dataset.add_column("labels", labels)
-                return dataset
-            
-            for split in dataset: 
-                dataset[split] = preprocess(dataset[split]) 
+                for split in dataset: 
+                    dataset[split] = preprocess(dataset[split]) 
+                
+                
+                dataset.save_to_disk(f'{tok_save_path}/data/')  
 
             columns = ['input_ids', 'labels']
             tokenizer = trg_tokenizer

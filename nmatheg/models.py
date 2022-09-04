@@ -488,7 +488,7 @@ class BaseMachineTranslationModel:
         
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
-        test_metrics = self.evaluate_dataset(test_dataset, batch_size=batch_size)
+        test_metrics = self.evaluate_dataset(test_dataset)
         print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test BLEU {test_metrics['bleu']:.4f}")
         return {'bleu':test_metrics['bleu']}
         
