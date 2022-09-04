@@ -31,7 +31,8 @@ def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
         dataset['test'] = train_valid_dataset.pop('test')
         dataset['train'] = train_valid_dataset['train']
 
-    if max_train_samples < len(dataset['train']):
+    
+    if max_train_samples < len(dataset['train']) and max_train_samples != -1:
         print(f"truncating train samples from {len(dataset['train'])} to {max_train_samples}")
         dataset['train'] = dataset['train'].select(range(max_train_samples))
     return dataset 
