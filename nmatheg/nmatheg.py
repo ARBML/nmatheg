@@ -11,7 +11,7 @@ import pickle
 
 class TrainStrategy:
   def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',config_path= None,
-               batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128, max_train_samples = None):
+               batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128, max_train_samples = -1):
 
     if config_path == None:
       self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs,

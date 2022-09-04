@@ -70,7 +70,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     dataset_name = data_config['name']
     max_tokens = int(config['tokenization']['max_tokens'])
     tok_save_path = config['tokenization']['tok_save_path']
-    max_train_samples = config['tokenization']['max_train_samples']
+    max_train_samples = int(config['tokenization']['max_train_samples'])
 
     batch_size = int(config['train']['batch_size'])
     task_name = data_config['task']
