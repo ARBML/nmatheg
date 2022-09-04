@@ -11,7 +11,7 @@ from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
 from .preprocess_qa import prepare_features
 import copy 
 
-def split_dataset(dataset, data_config, seed = 42):
+def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
     split_names = ['train', 'valid', 'test']
 
     for i, split_name in enumerate(['train', 'valid', 'test']):
@@ -29,7 +29,11 @@ def split_dataset(dataset, data_config, seed = 42):
     if 'test' not in dataset:
         train_valid_dataset = dataset['train'].train_test_split(test_size=0.1, seed = seed)
         dataset['test'] = train_valid_dataset.pop('test')
-        dataset['train'] = train_valid_dataset['train']  
+        dataset['train'] = train_valid_dataset['train']
+
+    if max_train_samples < len(dataset['train']):
+        print(f"truncating train samples from {len(dataset['train'])} to {max_train_samples}")
+        dataset['train'] = dataset['train'].select(range(max_train_samples))
     return dataset 
 
 
@@ -66,6 +70,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     dataset_name = data_config['name']
     max_tokens = int(config['tokenization']['max_tokens'])
     tok_save_path = config['tokenization']['tok_save_path']
+    max_train_samples = config['tokenization']['max_train_samples']
 
     batch_size = int(config['train']['batch_size'])
     task_name = data_config['task']
@@ -82,7 +87,7 @@ def create_dataset(config, data_config, vocab_size = 300,
 
             os.system(f"{clone} && {wget}")
 
-        dataset = load_dataset(dataset_name, data_config['subset'])
+        dataset = load_dataset(dataset_name, data_config['subset'], split = f"{data_config['train']}[:{max_train_samples}]")
     except:
         dataset = load_dataset(dataset_name)
     
@@ -90,7 +95,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     if task_name != 'qa' and task_name != 'mt':
         dataset = clean_dataset(dataset, config, data_config)
 
-    dataset = split_dataset(dataset, data_config)
+    dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
 
     if task_name == 'cls':
@@ -214,8 +219,8 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
                 print('training tokenizer from scratch')
-                open('src_data.txt', 'w').write('\n'.join(dataset['validation'][src_lang]))
-                open('trg_data.txt', 'w').write('\n'.join(dataset['validation'][trg_lang]))
+                open('src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
+                open('trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
 
                 src_tokenizer.train(file = 'src_data.txt')
                 trg_tokenizer.train(file = 'trg_data.txt')
