@@ -87,7 +87,7 @@ def create_dataset(config, data_config, vocab_size = 300,
 
             os.system(f"{clone} && {wget}")
 
-        dataset = load_dataset(dataset_name, data_config['subset'], split = f"{data_config['train']}[:{max_train_samples}]")
+        dataset = load_dataset(dataset_name, data_config['subset'])
     except:
         dataset = load_dataset(dataset_name)
     
