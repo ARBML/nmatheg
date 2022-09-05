@@ -7,7 +7,8 @@ from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,SimpleMachineTranslationModel,T5MachineTranslationModel
 from .configs import create_default_config
 import configparser
-import pickle 
+import pickle
+import json 
 
 class TrainStrategy:
   def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',config_path= None,
@@ -33,25 +34,48 @@ class TrainStrategy:
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
     tokenizers = [t.strip() for t in self.config['tokenization']['tokenizer_name'].split(',')]
-    vocab_sizes = [int(v.strip()) for v in self.config['tokenization']['vocab_size'].split(',')]
+    vocab_sizes = [v.strip() for v in self.config['tokenization']['vocab_size'].split(',')]
     runs = int(self.config['train']['runs'])
     output = []
+    results = {}
     dataset_metrics = []
 
+    results_path = f"{self.config['train']['save_dir']}/results.json"
+    if os.path.isfile(results_path):
+      f = open(results_path)
+      results = json.load(f)
+    print(results)
     for tokenizer_name in tokenizers:
+      if not tokenizer_name in results:
+        results[tokenizer_name] = {}
       for vocab_size in vocab_sizes:
-        for dataset_name in dataset_names: 
+        if not vocab_size in results[tokenizer_name]:
+          results[tokenizer_name][vocab_size] = {}
+        for dataset_name in dataset_names:
+          if not dataset_name in results[tokenizer_name][vocab_size]:
+            results[tokenizer_name][vocab_size][dataset_name] = {} 
           for model_name in model_names:
+            if not model_name in results[tokenizer_name][vocab_size][dataset_name]:
+              results[tokenizer_name][vocab_size][dataset_name][model_name] = {} 
             for run in range(runs):
+              if os.path.isfile(results_path):
+                try:
+                  metric_name = list(results[tokenizer_name][vocab_size][dataset_name][model_name].keys())[0]
+                  curr_run = len(results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name])
+                  if run < curr_run:
+                    print(f"Run {run} already finished ")
+                    continue
+                except:
+                  pass  
               self.data_config = self.datasets_config[dataset_name]
               print(dict(self.data_config))
               task_name = self.data_config['task']
               tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
-                                                                      vocab_size = vocab_size, 
+                                                                      vocab_size = int(vocab_size), 
                                                                       model_name = model_name,
                                                                       tokenizer_name = tokenizer_name)
               self.model_config = {'model_name':model_name,
-                                  'vocab_size':vocab_size,
+                                  'vocab_size':int(vocab_size),
                                   'num_labels':int(self.data_config['num_labels'])}
 
               print(self.model_config)
@@ -77,11 +101,11 @@ class TrainStrategy:
                 else:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
               
-              try: tokenizer_name = tokenizer.name 
-              except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
+              # try: tokenizer_name = tokenizer.name 
+              # except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
 
               self.train_config = {'epochs':int(self.config['train']['epochs']),
-                                  'save_dir':f"{self.config['train']['save_dir']}/{tokenizer_name}/{dataset_name}/run_{run}",
+                                  'save_dir':f"{self.config['train']['save_dir']}/{tokenizer.name}/{dataset_name}/run_{run}",
                                   'batch_size':int(self.config['train']['batch_size']),
                                   'lr':float(self.config['train']['lr']),
                                   'runs':run}
@@ -93,10 +117,11 @@ class TrainStrategy:
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
               for metric_name in metrics:
-                if model_name == model_names[0]:
-                  dataset_metrics.append(dataset_name+metric_name)
-              output.append([model_name, dataset_name, tokenizer_name, run,  metrics])
+                try:
+                  results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name].append(metrics[metric_name])
+                except:
+                  results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name] = []
               self.model.wipe_memory()
-    with open(f"{self.config['train']['save_dir']}/results.pl", 'wb') as handle:
-      pickle.dump(output, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    return output    
+              with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
+                json.dump(results, handle)
+    return results    
