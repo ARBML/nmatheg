@@ -70,9 +70,6 @@ class BaseTextClassficationModel:
         train_dataset, valid_dataset, test_dataset = datasets 
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
-        self.scheduler = get_linear_schedule_with_warmup(self.optimizer,
-                                                        num_warmup_steps = 0,
-                                                        num_training_steps=len(train_dataset)//epochs)
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
         for epoch in range(epochs):
