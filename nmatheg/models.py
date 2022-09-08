@@ -315,7 +315,7 @@ class BaseQuestionAnsweringModel:
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
-            # self.model.train().to(self.device)
+            self.model.train().to(self.device)
             all_start_logits = []
             all_end_logits = []
             for _, batch in enumerate(train_dataset):
@@ -380,6 +380,7 @@ class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
         BaseQuestionAnsweringModel.__init__(self, config)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForQuestionAnswering.from_pretrained(self.model_name, config = config)
+        self.model.to(self.device)
     
     def wipe_memory(self):
         self.model = None  

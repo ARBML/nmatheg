@@ -153,7 +153,7 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
 
                 if word == "<sp>":
                     offsets.append((0, 0))
-                    tokens.append(-100) #TODO fix this one
+                    tokens.append(-100)
                     st = 0 
                 else:    
                     token_ids = tokenizer._encode_word(word)

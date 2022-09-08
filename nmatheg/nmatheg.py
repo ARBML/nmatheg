@@ -99,11 +99,11 @@ class TrainStrategy:
                 else:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
               
-              # try: tokenizer_name = tokenizer.name 
-              # except: tokenizer_name = tokenizer.name_or_path.split('/')[0]
+              try: new_tokenizer_name = tokenizer.name 
+              except: new_tokenizer_name = tokenizer.name_or_path.split('/')[0]
 
               self.train_config = {'epochs':int(self.config['train']['epochs']),
-                                  'save_dir':f"{self.config['train']['save_dir']}/{tokenizer.name}/{dataset_name}/run_{run}",
+                                  'save_dir':f"{self.config['train']['save_dir']}/{new_tokenizer_name}/{dataset_name}/run_{run}",
                                   'batch_size':int(self.config['train']['batch_size']),
                                   'lr':float(self.config['train']['lr']),
                                   'runs':run}
