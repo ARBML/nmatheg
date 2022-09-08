@@ -293,6 +293,11 @@ class BaseQuestionAnsweringModel:
         self.num_labels = config['num_labels'] 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.accelerator = Accelerator()
+        if 'bert' in self.model_name:
+          self.columns = ['input_ids', 'attention_mask', 'start_positions', 'end_positions']
+        else:
+          self.columns = ['input_ids', 'start_positions', 'end_positions']
+
 
     def train(self, datasets, examples, **kwargs):
         save_dir = kwargs['save_dir']
@@ -303,14 +308,11 @@ class BaseQuestionAnsweringModel:
 
         train_dataset, valid_dataset, test_dataset = datasets
         train_examples, valid_examples, test_examples = examples
-
+        train_loader = copy.deepcopy(train_dataset)
+        train_loader.set_format(type='torch', columns=self.columns)
+        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size)
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
-        
-        # train_data_loader = train_dataset.remove_columns(["example_id", "offset_mapping"])
-        # train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
-
-        # train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=batch_size)
 
         for epoch in range(epochs):
             accuracy = 0 
@@ -318,7 +320,7 @@ class BaseQuestionAnsweringModel:
             self.model.train().to(self.device)
             all_start_logits = []
             all_end_logits = []
-            for _, batch in enumerate(train_dataset):
+            for _, batch in enumerate(train_loader):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 val = batch['input_ids']
                 val[val==-100] = 0 
@@ -358,7 +360,10 @@ class BaseQuestionAnsweringModel:
         loss = 0 
         all_start_logits = []
         all_end_logits = []
-        for _, batch in enumerate(dataset):
+        data_loader = copy.deepcopy(dataset)
+        data_loader.set_format(type='torch', columns=self.columns)
+        data_loader = torch.utils.data.DataLoader(data_loader, batch_size=batch_size)
+        for _, batch in enumerate(data_loader):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             val = batch['input_ids']
             val[val==-100] = 0 
