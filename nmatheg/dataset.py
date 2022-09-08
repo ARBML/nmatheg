@@ -174,7 +174,7 @@ def create_dataset(config, data_config, vocab_size = 300,
 
 
         for split in dataset:
-          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer)
+          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_name = model_name)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "

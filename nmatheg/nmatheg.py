@@ -59,14 +59,12 @@ class TrainStrategy:
               results[tokenizer_name][vocab_size][dataset_name][model_name] = {} 
             for run in range(runs):
               if os.path.isfile(results_path):
-                try:
+                if len(results[tokenizer_name][vocab_size][dataset_name][model_name].keys()) > 0:
                   metric_name = list(results[tokenizer_name][vocab_size][dataset_name][model_name].keys())[0]
                   curr_run = len(results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name])
                   if run < curr_run:
                     print(f"Run {run} already finished ")
-                    continue
-                except:
-                  pass  
+                    continue 
               self.data_config = self.datasets_config[dataset_name]
               print(dict(self.data_config))
               task_name = self.data_config['task']
@@ -117,9 +115,9 @@ class TrainStrategy:
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
 
               for metric_name in metrics:
-                try:
+                if metric_name in results[tokenizer_name][vocab_size][dataset_name][model_name]:
                   results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name].append(metrics[metric_name])
-                except:
+                else:
                   results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name] = []
               self.model.wipe_memory()
               with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
