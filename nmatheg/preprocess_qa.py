@@ -20,9 +20,9 @@ def overflow_to_sample_mapping(tokens, offsets, idx, max_len = 384, doc_stride =
     # print('length for the context ', len(context))
     while True:
         ed_idx = st_idx+max_len-q_len-1
-        pad_re = max_len - len(question+[-100] + context[st_idx:ed_idx])
+        pad_re = max_len - len(question+[0] + context[st_idx:ed_idx])
         # print('pad_re ', pad_re, ' st_idx ', st_idx, ' ed_idx ', ed_idx)
-        curr_tokens = question+[-100] + context[st_idx:ed_idx] + [0] * pad_re
+        curr_tokens = question+[0] + context[st_idx:ed_idx] + [0] * pad_re
         curr_offset = q_offsets+[(0,0)] + c_offsets[st_idx:ed_idx] + [(0,0)] * pad_re
         curr_seq = [0]*q_len+[None]+[1]*(max_len-q_len-1)
 
@@ -145,12 +145,19 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
             question_context = question + " <sp> "+context
             st = 0
             for word in question_context.split(" "):
+                if word == '':
+                  continue
+                
+                if word == ' ':
+                  continue 
+
                 if word == "<sp>":
                     offsets.append((0, 0))
-                    tokens.append(-100)
+                    tokens.append(-100) #TODO fix this one
                     st = 0 
                 else:    
                     token_ids = tokenizer._encode_word(word)
+                    token_ids = [token_id for token_id in token_ids if token_id != tokenizer.sow_idx]
                     token_strs = tokenizer._tokenize_word(word, remove_sow=True)
                     assert len(token_ids) == len(token_strs)
                     for j, token_id in enumerate(token_ids):

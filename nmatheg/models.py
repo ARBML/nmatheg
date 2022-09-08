@@ -290,6 +290,7 @@ class BaseQuestionAnsweringModel:
         self.model = nn.Module()
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
+        self.num_labels = config['num_labels'] 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.accelerator = Accelerator()
 
@@ -306,23 +307,25 @@ class BaseQuestionAnsweringModel:
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
         
-        train_data_loader = train_dataset.remove_columns(["example_id", "offset_mapping"])
-        train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
+        # train_data_loader = train_dataset.remove_columns(["example_id", "offset_mapping"])
+        # train_data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
 
-        train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=batch_size)
+        # train_data_loader = torch.utils.data.DataLoader(train_data_loader, batch_size=batch_size)
 
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
-            self.model.train().to(self.device)
+            # self.model.train().to(self.device)
             all_start_logits = []
             all_end_logits = []
-            for _, batch in enumerate(train_data_loader):
+            for _, batch in enumerate(train_dataset):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
+                val = batch['input_ids']
+                val[val==-100] = 0 
                 outputs = self.model(**batch)
                 loss = outputs['loss']
-                start_logits = outputs.start_logits
-                end_logits = outputs.end_logits
+                start_logits = outputs['start_logits']
+                end_logits = outputs['end_logits']
 
                 all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
                 all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
@@ -355,15 +358,14 @@ class BaseQuestionAnsweringModel:
         loss = 0 
         all_start_logits = []
         all_end_logits = []
-        data_loader = dataset.remove_columns(["example_id", "offset_mapping"])
-        data_loader.set_format(type='torch', columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions'])
-        data_loader = torch.utils.data.DataLoader(data_loader, batch_size=batch_size)
-        for _, batch in enumerate(data_loader):
+        for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
+            val = batch['input_ids']
+            val[val==-100] = 0 
             outputs = self.model(**batch)
             loss = outputs['loss']
-            start_logits = outputs.start_logits
-            end_logits = outputs.end_logits
+            start_logits = outputs['start_logits']
+            end_logits = outputs['end_logits']
 
             all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
             all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
@@ -385,7 +387,7 @@ class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
         torch.cuda.empty_cache()
 
 class BiRNNForQuestionAnswering(nn.Module):
-    def __init__(self, vocab_size, num_labels, hidden_dim = 128):
+    def __init__(self, vocab_size, num_labels = 2, hidden_dim = 128):
         
         super().__init__()
         
@@ -393,13 +395,12 @@ class BiRNNForQuestionAnswering(nn.Module):
         self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
         self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
         self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
-        self.qa_outputs = nn.Linear(hidden_dim, 2)
+        self.qa_outputs = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         
     def forward(self, 
                 input_ids,
-                labels,
                 start_positions = None,
                 end_positions = None):
 
@@ -407,17 +408,18 @@ class BiRNNForQuestionAnswering(nn.Module):
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
         out,h = self.bigru3(out)
-        logits = self.fc(out)
-        hidden_states = self.qa_outputs(hidden_states)  # (bs, max_query_len, 2)
+        logits = self.qa_outputs(out)  # (bs, max_query_len, 2)
         start_logits, end_logits = logits.split(1, dim=-1)
         start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
         end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
         loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
         return {'loss':loss,
-                'logits':logits} 
+                'logits':logits,
+                'start_logits':start_logits,
+                'end_logits':end_logits} 
     
     def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
-        loss_fct = nn.CrossEntropyLoss(ignore_index=None)
+        loss_fct = nn.CrossEntropyLoss(ignore_index=0)
         start_loss = loss_fct(start_logits, start_positions)
         end_loss = loss_fct(end_logits, end_positions)
         total_loss = (start_loss + end_loss) / 2

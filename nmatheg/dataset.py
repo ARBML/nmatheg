@@ -154,6 +154,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     elif task_name == 'qa':
         if 'bert' in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
             if tokenizer_name == 'bpe':
                 tokenizer = bpe(vocab_size = vocab_size)
@@ -170,7 +171,8 @@ def create_dataset(config, data_config, vocab_size = 300,
                 write_data_for_train(dataset['train'], data_config['text'], task = task_name)
                 tokenizer.train(file = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
-                dataset.save_to_disk(f'{tok_save_path}/data/')  
+                dataset.save_to_disk(f'{tok_save_path}/data/')
+            columns=['input_ids', 'start_positions', 'end_positions']  
 
 
         for split in dataset:
@@ -242,9 +244,8 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = trg_tokenizer
             
     #create loaders 
-    if task_name != 'qa': 
-        for split in dataset:
-            dataset[split].set_format(type='torch', columns=columns)
-            dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+    for split in dataset:
+        dataset[split].set_format(type='torch', columns=columns)
+        dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
     
     return tokenizer, [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]

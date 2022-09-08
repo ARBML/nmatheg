@@ -78,23 +78,23 @@ class TrainStrategy:
 
               print(self.model_config)
               if task_name == 'cls':                  
-                if 'birnn' in model_name:
+                if 'bert' not in model_name:
                   self.model = SimpleClassificationModel(self.model_config)
                 else:
                   self.model = BERTTextClassificationModel(self.model_config)
               elif task_name == 'ner':
-                if 'birnn' in model_name:
+                if 'bert' not in model_name:
                   self.model = SimpleTokenClassificationModel(self.model_config)
                 else:
                   self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
-                if 'birnn' in model_name:
+                if 'bert' not in model_name:
                   self.model = SimpleQuestionAnsweringModel(self.model_config)
                 else:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name == 'mt':
-                if 'seq2seq' in model_name:
+                if 'T5' not in model_name:
                   self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
                 else:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
