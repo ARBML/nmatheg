@@ -502,12 +502,13 @@ class BaseMachineTranslationModel:
         bleu_score = 0
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
-            if self.model_name == "seq2seq":
-              outputs = self.model(**batch, mode ="generate")
-              generated_tokens = outputs['outputs']
-            else:
+            if 'T5' in self.model_name:
               outputs = self.model(**batch)
               generated_tokens = self.model.generate(batch['input_ids'])
+            else:
+              outputs = self.model(**batch, mode ="generate")
+              generated_tokens = outputs['outputs']
+                            
             labels = batch['labels']
             loss = outputs['loss']
             metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
