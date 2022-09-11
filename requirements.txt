@@ -7,3 +7,4 @@ accelerate
 seqeval
 sacrebleu
 evaluate
+pandas

@@ -4,7 +4,7 @@ from datasets import load_dataset, load_from_disk
 from bpe_surgery import bpe
 
 import os 
-from .utils import get_preprocessing_args
+from .utils import get_preprocessing_args, get_tokenizer
 from transformers import AutoTokenizer
 import torch
 from .preprocess_ner import aggregate_tokens, tokenize_and_align_labels
@@ -99,10 +99,7 @@ def create_dataset(config, data_config, vocab_size = 300,
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            if tokenizer_name == 'bpe':
-                tokenizer = bpe(vocab_size = vocab_size)
-            elif tokenizer_name == 'bpe-morph': 
-                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
+            tokenizer = get_tokenizer(tokenizer_name)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -126,10 +123,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'labels']
         else:
-            if tokenizer_name == 'bpe':
-                tokenizer = bpe(vocab_size = vocab_size)
-            elif tokenizer_name == 'bpe-morph': 
-                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
+            tokenizer = get_tokenizer(tokenizer_name)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -156,10 +150,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
-            if tokenizer_name == 'bpe':
-                tokenizer = bpe(vocab_size = vocab_size)
-            elif tokenizer_name == 'bpe-morph': 
-                tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True)
+            tokenizer = get_tokenizer(tokenizer_name)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -199,12 +190,8 @@ def create_dataset(config, data_config, vocab_size = 300,
             dataset = dataset.map(preprocess, batched=True)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
-            if tokenizer_name == 'bpe':
-                src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en')
-                trg_tokenizer = bpe(vocab_size = vocab_size, lang = 'ar')
-            elif tokenizer_name == 'bpe-morph':
-                src_tokenizer = bpe(vocab_size = vocab_size, lang = 'en') 
-                trg_tokenizer = bpe(vocab_size = vocab_size, morph = True, morph_with_sep=True, lang = 'ar')
+            src_tokenizer = get_tokenizer('bpe', lang = 'en')
+            trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar')
 
             tok_save_path = f"{save_dir}/{trg_tokenizer.name}/{dataset_name}/"
 
