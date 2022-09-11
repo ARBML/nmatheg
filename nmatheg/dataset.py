@@ -99,7 +99,7 @@ def create_dataset(config, data_config, vocab_size = 300,
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
-            tokenizer = get_tokenizer(tokenizer_name)
+            tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -123,7 +123,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'labels']
         else:
-            tokenizer = get_tokenizer(tokenizer_name)
+            tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -150,7 +150,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
-            tokenizer = get_tokenizer(tokenizer_name)
+            tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
             tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -190,8 +190,8 @@ def create_dataset(config, data_config, vocab_size = 300,
             dataset = dataset.map(preprocess, batched=True)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
-            src_tokenizer = get_tokenizer('bpe', lang = 'en')
-            trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar')
+            src_tokenizer = get_tokenizer('bpe', lang = 'en', vocab_size= vocab_size)
+            trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar', vocab_size= vocab_size)
 
             tok_save_path = f"{save_dir}/{trg_tokenizer.name}/{dataset_name}/"
 
