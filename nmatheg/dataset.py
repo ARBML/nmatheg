@@ -68,7 +68,8 @@ def write_data_for_train(dataset, text, task = 'cls'):
 def create_dataset(config, data_config, vocab_size = 300, 
                    model_name = "birnn", tokenizer_name = "bpe"):
 
-    dataset_name = data_config['name']
+    hf_dataset_name = data_config['name']
+    dataset_name = hf_dataset_name.split("/")[-1] #in case we have / in the name
     max_tokens = int(config['tokenization']['max_tokens'])
     tok_save_path = config['tokenization']['tok_save_path']
     max_train_samples = int(config['tokenization']['max_train_samples'])
@@ -81,9 +82,9 @@ def create_dataset(config, data_config, vocab_size = 300,
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     if 'subset' in data_config:
-        dataset = load_dataset(dataset_name, data_config['subset'])
+        dataset = load_dataset(hf_dataset_name, data_config['subset'])
     else:
-        dataset = load_dataset(dataset_name)
+        dataset = load_dataset(hf_dataset_name)
     
     
     if task_name != 'qa' and task_name != 'mt':
