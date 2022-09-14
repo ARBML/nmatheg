@@ -574,7 +574,7 @@ class T5MachineTranslationModel(BaseMachineTranslationModel):
 
 #https://colab.research.google.com/github/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb#scrollTo=dCK3LIN25n_S
 class Encoder(nn.Module):
-    def __init__(self, input_dim, emb_dim, hid_dim, n_layers):
+    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, bidirectional = True):
         super().__init__()
         
         self.hid_dim = hid_dim
@@ -582,7 +582,7 @@ class Encoder(nn.Module):
         
         self.embedding = nn.Embedding(input_dim, emb_dim)
         
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers)
+        self.rnn = nn.GRU(emb_dim, hid_dim, n_layers, bidirectional = bidirectional)
                 
     def forward(self, src):
         
@@ -592,17 +592,15 @@ class Encoder(nn.Module):
         
         #embedded = [src len, batch size, emb dim]
         
-        outputs, (hidden, cell) = self.rnn(embedded)
-        
+        outputs, hidden = self.rnn(embedded)
         #outputs = [src len, batch size, hid dim * n directions]
         #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
         
         #outputs are always from the top hidden layer
         
-        return hidden, cell
+        return hidden
 class Decoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, hid_dim, n_layers):
+    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, bidirectional = True):
         super().__init__()
         
         self.output_dim = output_dim
@@ -611,20 +609,15 @@ class Decoder(nn.Module):
         
         self.embedding = nn.Embedding(output_dim, emb_dim)
         
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers)
+        self.rnn = nn.GRU(emb_dim, hid_dim, n_layers, bidirectional = bidirectional)
         
         self.fc_out = nn.Linear(hid_dim, output_dim)
         
         
-    def forward(self, input, hidden, cell):
+    def forward(self, input, hidden):
         
         #input = [batch size]
         #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
-        
-        #n directions in the decoder will both always be 1, therefore:
-        #hidden = [n layers, batch size, hid dim]
-        #context = [n layers, batch size, hid dim]
         
         input = input.unsqueeze(0)
         
@@ -634,30 +627,24 @@ class Decoder(nn.Module):
         
         #embedded = [1, batch size, emb dim]
                 
-        output, (hidden, cell) = self.rnn(embedded, (hidden, cell))
-        
-        #output = [seq len, batch size, hid dim * n directions]
-        #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
-        
+        output, hidden = self.rnn(embedded, hidden)
         #seq len and n directions will always be 1 in the decoder, therefore:
-        #output = [1, batch size, hid dim]
-        #hidden = [n layers, batch size, hid dim]
-        #cell = [n layers, batch size, hid dim]
-        
+        #output = [1, batch size, hid dim*2]
+        #hidden = [n layers, batch size, hid dim] 
+        output = (output[:, :, :self.hid_dim] + output[:, :, self.hid_dim:])
         prediction = self.fc_out(output.squeeze(0))
         
         #prediction = [batch size, output dim]
         
-        return prediction, hidden, cell
+        return prediction, hidden
 
 class Seq2SeqMachineTranslation(nn.Module):
     def __init__(self, vocab_size = 500, tokenizer = None):
         super().__init__()
         ENC_EMB_DIM = 128
         DEC_EMB_DIM = 128
-        HID_DIM = 2084
-        N_LAYERS = 1
+        HID_DIM = 1024
+        N_LAYERS = 2
         INPUT_DIM = vocab_size
         OUTPUT_DIM = vocab_size
         self.vocab_size = vocab_size
@@ -670,7 +657,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         assert self.encoder.n_layers == self.decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
-    def forward(self, input_ids, labels, teacher_forcing_ratio = 0.0, mode = "train"):
+    def forward(self, input_ids, labels, teacher_forcing_ratio = 0.5, mode = "train"):
         src = torch.transpose(input_ids, 0, 1)
         trg = torch.transpose(labels, 0, 1)
 
@@ -687,7 +674,7 @@ class Seq2SeqMachineTranslation(nn.Module):
         #tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         #last hidden state of the encoder is used as the initial hidden state of the decoder
-        hidden, cell = self.encoder(src)
+        hidden = self.encoder(src)
         
         #first input to the decoder is the <sos> tokens          
         input = torch.tensor([self.tokenizer.sos_idx]*batch_size).to(self.device)
@@ -696,7 +683,7 @@ class Seq2SeqMachineTranslation(nn.Module):
             
             #insert input token embedding, previous hidden and previous cell states
             #receive output tensor (predictions) and new hidden and cell states
-            output, hidden, cell = self.decoder(input, hidden, cell)
+            output, hidden = self.decoder(input, hidden)
             
             #decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
