@@ -310,7 +310,7 @@ class BaseQuestionAnsweringModel:
         train_examples, valid_examples, test_examples = examples
         train_loader = copy.deepcopy(train_dataset)
         train_loader.set_format(type='torch', columns=self.columns)
-        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size)
+        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size, shuffle = True)
         filepath = os.path.join(save_dir, 'model.pth')
         best_accuracy = 0 
 

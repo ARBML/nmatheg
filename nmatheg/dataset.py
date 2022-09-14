@@ -235,6 +235,6 @@ def create_dataset(config, data_config, vocab_size = 300,
     if task_name != 'qa':
       for split in dataset:
           dataset[split].set_format(type='torch', columns=columns)
-          dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size)
+          dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size, shuffle = True)
     
     return tokenizer, [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]
