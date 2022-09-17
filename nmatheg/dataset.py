@@ -191,7 +191,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             dataset = dataset.map(preprocess, batched=True)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
-            src_tokenizer = get_tokenizer('bpe', lang = 'en', vocab_size= vocab_size)
+            src_tokenizer = get_tokenizer(tokenizer_name, lang = 'en', vocab_size= vocab_size)
             trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar', vocab_size= vocab_size)
 
             tok_save_path = f"{save_dir}/{trg_tokenizer.name}/{dataset_name}/"

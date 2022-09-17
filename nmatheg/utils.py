@@ -2,14 +2,18 @@ import tkseem as tk
 import bpe_surgery
 
 def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
-    if tok_name == 'bpe':
-      return bpe_surgery.bpe(vocab_size, lang = lang)
-    elif tok_name == 'bpe-morph':
-      return bpe_surgery.bpe(vocab_size, morph = True, morph_with_sep=True, lang = lang)   
-    elif tok_name == 'bpe-seg':
-      return bpe_surgery.bpe(vocab_size, seg = True, lang = lang)
-    elif tok_name == "WordTokenizer":
+    if tok_name == "WordTokenizer":
       return tk.WordTokenizer(vocab_size=vocab_size)
+    elif tok_name == "SentencePieceTokenizer":
+      return tk.SentencePieceTokenizer(vocab_size=vocab_size)
+    elif tok_name == "CharacterTokenizer":
+      return tk.CharacterTokenizer(vocab_size=vocab_size)
+    elif tok_name == "RandomTokenizer":
+      return tk.RandomTokenizer(vocab_size=vocab_size)
+    elif tok_name == "DisjointLetterTokenizer":
+      return tk.DisjointLetterTokenizer(vocab_size=vocab_size)
+    elif tok_name == "MorphologicalTokenizer":
+      return tk.MorphologicalTokenizer(vocab_size=vocab_size)
     else:
       raise('Unrecognized tokenizer name!')
 
