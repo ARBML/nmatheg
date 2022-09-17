@@ -8,6 +8,8 @@ def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
       return bpe_surgery.bpe(vocab_size, morph = True, morph_with_sep=True, lang = lang)   
     elif tok_name == 'bpe-seg':
       return bpe_surgery.bpe(vocab_size, seg = True, lang = lang)
+    elif tok_name == "WordTokenizer":
+      return tk.WordTokenizer(vocab_size=vocab_size)
     else:
       raise('Unrecognized tokenizer name!')
 

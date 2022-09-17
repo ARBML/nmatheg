@@ -110,7 +110,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'])
-                tokenizer.train(file = 'data.txt')
+                tokenizer.train(file_path = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
@@ -134,7 +134,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], task = task_name)
-                tokenizer.train(file = 'data.txt')
+                tokenizer.train(file_path = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
 
@@ -161,7 +161,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], task = task_name)
-                tokenizer.train(file = 'data.txt')
+                tokenizer.train(file_path = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
                 dataset.save_to_disk(f'{tok_save_path}/data/')
             columns=['input_ids', 'start_positions', 'end_positions']  
@@ -206,8 +206,8 @@ def create_dataset(config, data_config, vocab_size = 300,
                 open('src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
                 open('trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
 
-                src_tokenizer.train(file = 'src_data.txt')
-                trg_tokenizer.train(file = 'trg_data.txt')
+                src_tokenizer.train(file_path = 'src_data.txt')
+                trg_tokenizer.train(file_path = 'trg_data.txt')
                 src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
                 trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
 
@@ -233,8 +233,8 @@ def create_dataset(config, data_config, vocab_size = 300,
             
     #create loaders
     if task_name != 'qa':
-      for split in dataset:
-          dataset[split].set_format(type='torch', columns=columns)
-          dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size, shuffle = True)
+        for split in dataset:
+            dataset[split].set_format(type='torch', columns=columns)
+            dataset[split] = torch.utils.data.DataLoader(dataset[split], batch_size=batch_size, shuffle = True)
     
     return tokenizer, [dataset['train'], dataset['valid'], dataset['test']], [examples['train'], examples['valid'], examples['test']]
