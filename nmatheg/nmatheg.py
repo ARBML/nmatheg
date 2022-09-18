@@ -7,8 +7,8 @@ from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,SimpleMachineTranslationModel,T5MachineTranslationModel
 from .configs import create_default_config
 import configparser
-import pickle
 import json 
+from .utils import save_json
 
 class TrainStrategy:
   def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',config_path= None,
@@ -109,10 +109,17 @@ class TrainStrategy:
                                   'runs':run}
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
+              train_dir = f"{self.config['train']['save_dir']}/{new_tokenizer_name}/{dataset_name}/run_{run}"
+
               if task_name == 'mt':
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
               else:
                 metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+
+              save_json(self.train_config, f"{train_dir}/train_config.json")
+              save_json(self.data_config, f"{train_dir}/data_config.json")
+              save_json(self.model_config, f"{train_dir}/model_config.json")
+              save_json(self.config, f"{train_dir}/config.json")
 
               for metric_name in metrics:
                 if metric_name not in results[tokenizer_name][vocab_size][dataset_name][model_name]:
