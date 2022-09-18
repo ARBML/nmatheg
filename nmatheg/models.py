@@ -28,17 +28,16 @@ class BiRNN(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.fc = nn.Linear(2*hidden_dim, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.fc = nn.Linear(2*hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         
     def forward(self, 
                 input_ids,
                 labels = None):
-
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
@@ -152,9 +151,9 @@ class BiRNNForTokenClassification(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True, batch_first = True)
         self.fc = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
@@ -163,6 +162,7 @@ class BiRNNForTokenClassification(nn.Module):
                 input_ids,
                 labels = None):
 
+        input_ids = torch.transpose(input_ids, 0, 1)
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
@@ -403,9 +403,9 @@ class BiRNNForQuestionAnswering(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True, batch_first = True)
         self.qa_outputs = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
@@ -676,8 +676,8 @@ class Seq2SeqMachineTranslation(nn.Module):
         #teacher_forcing_ratio is probability to use teacher forcing
         #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
 
-        batch_size = input_ids.shape[1]
-        trg_len = input_ids.shape[0]
+        batch_size = src.shape[1]
+        trg_len = src.shape[0]
 
         trg_vocab_size = self.decoder.output_dim
         
