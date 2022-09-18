@@ -119,7 +119,6 @@ class TrainStrategy:
               save_json(self.train_config, f"{train_dir}/train_config.json")
               save_json(self.data_config, f"{train_dir}/data_config.json")
               save_json(self.model_config, f"{train_dir}/model_config.json")
-              save_json(self.config, f"{train_dir}/config.json")
 
               for metric_name in metrics:
                 if metric_name not in results[tokenizer_name][vocab_size][dataset_name][model_name]:

@@ -37,16 +37,18 @@ class BiRNN(nn.Module):
         
     def forward(self, 
                 input_ids,
-                labels):
+                labels = None):
 
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
         out,h = self.bigru3(out)
         logits = self.fc(out[:,0,:])
-        loss = self.compute_loss(logits, labels)
-        return {'loss':loss,
-                'logits':logits} 
+        if labels is not None:
+            loss = self.compute_loss(logits, labels)
+            return {'loss':loss,
+                    'logits':logits}
+        return {'logits': logits} 
     
     def compute_loss(self, logits, labels):
         loss_fct = nn.CrossEntropyLoss()
@@ -159,16 +161,19 @@ class BiRNNForTokenClassification(nn.Module):
         
     def forward(self, 
                 input_ids,
-                labels):
+                labels = None):
 
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
         out,h = self.bigru3(out)
         logits = self.fc(out)
-        loss = self.compute_loss(logits, labels)
-        return {'loss':loss,
-                'logits':logits} 
+        if labels is not None:
+            loss = self.compute_loss(logits, labels)
+            return {'loss':loss,
+                    'logits':logits}
+        else:
+            return {'logits':logits}  
     
     def compute_loss(self, logits, labels):
         loss_fct = nn.CrossEntropyLoss()
@@ -418,11 +423,14 @@ class BiRNNForQuestionAnswering(nn.Module):
         start_logits, end_logits = logits.split(1, dim=-1)
         start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
         end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
-        loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
-        return {'loss':loss,
-                'logits':logits,
-                'start_logits':start_logits,
-                'end_logits':end_logits} 
+        if start_positions is not None:
+            loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
+            return {'loss':loss,
+                    'logits':logits,
+                    'start_logits':start_logits,
+                    'end_logits':end_logits}
+        else:
+            return {'logits':logits} 
     
     def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
         loss_fct = nn.CrossEntropyLoss(ignore_index=0)
@@ -657,17 +665,19 @@ class Seq2SeqMachineTranslation(nn.Module):
         assert self.encoder.n_layers == self.decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
-    def forward(self, input_ids, labels, teacher_forcing_ratio = 0.5, mode = "train"):
+    def forward(self, input_ids, labels = None, teacher_forcing_ratio = 0.5, mode = "train"):
         src = torch.transpose(input_ids, 0, 1)
-        trg = torch.transpose(labels, 0, 1)
+        
+        if labels is not None:
+            trg = torch.transpose(labels, 0, 1)
 
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
         #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
 
-        batch_size = trg.shape[1]
-        trg_len = trg.shape[0]
+        batch_size = input_ids.shape[1]
+        trg_len = input_ids.shape[0]
 
         trg_vocab_size = self.decoder.output_dim
         
@@ -701,11 +711,13 @@ class Seq2SeqMachineTranslation(nn.Module):
             
             outputs[t] = output
         
-        
-        loss = self.compute_loss(outputs, trg)
-        return {'loss':loss,
-              'outputs':torch.transpose(outputs.argmax(-1), 0, 1)
-              } 
+        if labels is not None:
+            loss = self.compute_loss(outputs, trg)
+            return {'loss':loss,
+                'outputs':torch.transpose(outputs.argmax(-1), 0, 1)
+                }
+        else:
+            return {'outputs': torch.transpose(outputs.argmax(-1), 0, 1)} 
 
     def compute_loss(self, output, trg):
         loss_fct = nn.CrossEntropyLoss(ignore_index = self.tokenizer.pad_idx)

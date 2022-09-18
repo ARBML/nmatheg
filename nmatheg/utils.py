@@ -27,4 +27,4 @@ def get_preprocessing_args(config):
 
 def save_json(ob, save_path):
   with open(save_path, 'w') as handle:
-    json.dump(ob, handle)
+    json.dump(dict(ob), handle)
