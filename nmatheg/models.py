@@ -429,7 +429,9 @@ class BiRNNForQuestionAnswering(nn.Module):
                     'start_logits':start_logits,
                     'end_logits':end_logits}
         else:
-            return {'logits':logits} 
+            return {'logits':logits,
+                    'start_logits':start_logits,
+                    'end_logits':end_logits}
     
     def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
         loss_fct = nn.CrossEntropyLoss(ignore_index=0)
