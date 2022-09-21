@@ -110,7 +110,8 @@ class TrainStrategy:
                                   'batch_size':int(self.config['train']['batch_size']),
                                   'lr':float(self.config['train']['lr']),
                                   'runs':run}
-              self.tokenizer_config = {'name': tokenizer_name, 'vocab_size': vocab_size, 'max_tokens': max_tokens}
+              self.tokenizer_config = {'name': tokenizer_name, 'vocab_size': vocab_size, 'max_tokens': max_tokens,
+                                      'save_path': f"{self.config['train']['save_dir']}/{new_tokenizer_name}/{dataset_name}"}
               print(self.tokenizer_config)
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
