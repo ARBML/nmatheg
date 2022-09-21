@@ -162,7 +162,6 @@ class BiRNNForTokenClassification(nn.Module):
                 input_ids,
                 labels = None):
 
-        input_ids = torch.transpose(input_ids, 0, 1)
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
