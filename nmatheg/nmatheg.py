@@ -22,7 +22,7 @@ class TrainStrategy:
       self.config['dataset'] = {'dataset_name' : datasets}
       self.config['model'] = {'model_name' : models}
       self.config['tokenization']['vocab_size'] = vocab_sizes
-      self.config['tokenization']['tokenizer_name'] = tokenizers
+      self.config['tokenization']['tokenizer_name'] = tokenizers      
       print(self.config)
     else:
       self.config = configparser.ConfigParser()
@@ -39,6 +39,8 @@ class TrainStrategy:
     tokenizers = [t.strip() for t in self.config['tokenization']['tokenizer_name'].split(',')]
     vocab_sizes = [v.strip() for v in self.config['tokenization']['vocab_size'].split(',')]
     runs = int(self.config['train']['runs'])
+    max_tokens = int(self.config['tokenization']['max_tokens'])
+
     results = {}
 
     results_path = f"{self.config['train']['save_dir']}/results.json"
@@ -108,6 +110,8 @@ class TrainStrategy:
                                   'batch_size':int(self.config['train']['batch_size']),
                                   'lr':float(self.config['train']['lr']),
                                   'runs':run}
+              self.tokenizer_config = {'name': tokenizer_name, 'vocab_size': vocab_size, 'max_tokens': max_tokens}
+              print(self.tokenizer_config)
               print(self.train_config)
               os.makedirs(self.train_config['save_dir'], exist_ok = True)
               train_dir = f"{self.config['train']['save_dir']}/{new_tokenizer_name}/{dataset_name}/run_{run}"
@@ -120,7 +124,7 @@ class TrainStrategy:
               save_json(self.train_config, f"{train_dir}/train_config.json")
               save_json(self.data_config, f"{train_dir}/data_config.json")
               save_json(self.model_config, f"{train_dir}/model_config.json")
-
+              save_json(self.tokenizer_config, f"{train_dir}/tokenizer_config.json")
               for metric_name in metrics:
                 if metric_name not in results[tokenizer_name][vocab_size][dataset_name][model_name]:
                   results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name] = []
