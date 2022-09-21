@@ -145,12 +145,6 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
             question_context = question + " <sp> "+context
             st = 0
             for word in question_context.split(" "):
-                if word == '':
-                  continue
-                
-                if word == ' ':
-                  continue 
-
                 if word == "<sp>":
                     offsets.append((0, 0))
                     tokens.append(-100)
@@ -159,7 +153,8 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
                     token_ids = tokenizer._encode_word(word)
                     token_ids = [token_id for token_id in token_ids if token_id != tokenizer.sow_idx]
                     token_strs = tokenizer._tokenize_word(word, remove_sow=True)
-                    assert len(token_ids) == len(token_strs)
+                    if len(token_ids) != len(token_strs):
+                        continue
                     for j, token_id in enumerate(token_ids):
                         token_str = token_strs[j]
                         tokens.append(token_id)
