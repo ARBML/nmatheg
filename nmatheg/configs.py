@@ -1,5 +1,6 @@
 import configparser
-def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 64, max_train_samples = -1):
+def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 64, 
+                          max_train_samples = -1, preprocessing = {}):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -16,6 +17,9 @@ def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max
         'remove_long_words' : False,
         'remove_repeated_chars' : False,
     }
+
+    for arg in preprocessing:
+        config['preprocessing'][arg] = preprocessing[arg]
 
     config['tokenization'] = {
         'max_tokens' : max_tokens,

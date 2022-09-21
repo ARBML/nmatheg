@@ -38,9 +38,12 @@ def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
     return dataset 
 
 
-def clean_dataset(dataset, config, data_config):
-    text = data_config['text']
-
+def clean_dataset(dataset, config, data_config, task = 'cls'):
+    if task == 'mt' or task == 'qa':
+        # clean target and question 
+        text = data_config['text'].split(',')[1]
+    else:
+        text = data_config['text']
     args = get_preprocessing_args(config)
     cleaner = tn.Tnkeeh(**args)
     dataset = cleaner.clean_hf_dataset(dataset, text)
@@ -87,8 +90,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         dataset = load_dataset(hf_dataset_name)
     
     
-    if task_name != 'qa' and task_name != 'mt':
-        dataset = clean_dataset(dataset, config, data_config)
+    dataset = clean_dataset(dataset, config, data_config, task = task_name)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
@@ -172,7 +174,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
-        trg_lang, src_lang = data_config['text'].split(",")
+        src_lang, trg_lang = data_config['text'].split(",")
 
         if 'T5' in model_name:
              
