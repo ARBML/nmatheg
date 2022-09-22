@@ -71,7 +71,7 @@ class BaseTextClassficationModel:
         train_dataset, valid_dataset, test_dataset = datasets 
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
@@ -196,7 +196,7 @@ class BaseTokenClassficationModel:
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
 
         train_dataset, valid_dataset, test_dataset = datasets 
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
@@ -315,7 +315,7 @@ class BaseQuestionAnsweringModel:
         train_loader = copy.deepcopy(train_dataset)
         train_loader.set_format(type='torch', columns=self.columns)
         train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size, shuffle = True)
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
 
         for epoch in range(epochs):
@@ -472,7 +472,7 @@ class BaseMachineTranslationModel:
         self.metric = load("sacrebleu")
         train_dataset, valid_dataset, test_dataset = datasets
 
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         
         for epoch in range(epochs):
