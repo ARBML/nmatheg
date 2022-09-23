@@ -110,7 +110,7 @@ class TrainStrategy:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
               
               try: new_tokenizer_name = tokenizer.name 
-              except: new_tokenizer_name = tokenizer.name_or_path.split('/')[0]
+              except: new_tokenizer_name = tokenizer.name_or_path.split('/')[-1]
 
               self.train_config = {'epochs':int(self.config['train']['epochs']),
                                   'save_dir':f"{self.config['train']['save_dir']}/{new_tokenizer_name}/{dataset_name}/run_{run}",
