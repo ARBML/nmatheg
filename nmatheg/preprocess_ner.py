@@ -41,7 +41,7 @@ def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'ber
         )
         labels = []
         for i, label in enumerate(dataset[tag_col]):
-            word_ids = tokenizer.word_ids(batch_index=i)
+            word_ids = tokenized_inputs.word_ids(batch_index=i)
             previous_word_idx = None
             label_ids = []
             for word_idx in word_ids:
