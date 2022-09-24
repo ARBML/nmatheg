@@ -84,27 +84,28 @@ class TrainStrategy:
                                                                       tokenizer_name = tokenizer_name)
               self.model_config = {'model_name':model_name,
                                   'vocab_size':int(vocab_size),
-                                  'num_labels':int(self.data_config['num_labels'])}
+                                  'num_labels':int(self.data_config['num_labels']),
+                                  'labels':self.data_config['labels']}
 
               print(self.model_config)
               if task_name == 'cls':                  
-                if 'bert' not in model_name:
+                if 'birnn' in model_name:
                   self.model = SimpleClassificationModel(self.model_config)
                 else:
                   self.model = BERTTextClassificationModel(self.model_config)
               elif task_name == 'ner':
-                if 'bert' not in model_name:
+                if 'birnn' in model_name:
                   self.model = SimpleTokenClassificationModel(self.model_config)
                 else:
                   self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
-                if 'bert' not in model_name:
+                if 'birnn' in model_name:
                   self.model = SimpleQuestionAnsweringModel(self.model_config)
                 else:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name == 'mt':
-                if 'T5' not in model_name:
+                if 'birnn' in model_name:
                   self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
                 else:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
@@ -162,7 +163,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       trg_tokenizer.load(tokenizer_save_path, name = "trg_tok")
 
       model = SimpleMachineTranslationModel(model_config, tokenizer = trg_tokenizer)
-      model.model.load_state_dict(torch.load(f"{save_dir}/model.pth"))
+      model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
 
       encoding = src_tokenizer.encode_sentences([sentence], add_boundry=True, out_length=max_tokens)
       out = model.model(torch.tensor(encoding).to('cuda'), mode = "generate")
@@ -173,7 +174,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       tokenizer.load(tokenizer_save_path)
 
       model = SimpleClassificationModel(model_config)
-      model.model.load_state_dict(torch.load(f"{save_dir}/model.pth"))
+      model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
 
       encoding = tokenizer.encode_sentences([sentence], add_boundry=True, out_length=max_tokens)
       out = model.model(torch.tensor(encoding).to('cuda'))
@@ -185,7 +186,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       tokenizer.load(tokenizer_save_path)
 
       model = SimpleTokenClassificationModel(model_config)
-      model.model.load_state_dict(torch.load(f"{save_dir}/model.pth"))
+      model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
       output = []
       labels = data_config['labels'].split(",")
       out_sentence = ""
@@ -218,7 +219,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       tokenizer.load(tokenizer_save_path)
 
       model = SimpleQuestionAnsweringModel(model_config)
-      model.model.load_state_dict(torch.load(f"{save_dir}/model.pth"))
+      model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
       encoding = tokenizer.encode_sentences([sentence], out_length=max_tokens)
       out = model.model(torch.tensor(encoding).to('cuda'))
       start_preds = out['start_logits'].argmax(-1).cpu().numpy()

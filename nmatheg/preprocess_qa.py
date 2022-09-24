@@ -39,11 +39,11 @@ def overflow_to_sample_mapping(tokens, offsets, idx, max_len = 384, doc_stride =
       assert len(fixed_tokens[i]) == len(fixed_offsets[i])  
     return fixed_tokens, fixed_offsets, samplings, sequences
 
-def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_len = 128):
+def prepare_features(examples, tokenizer, data_config, model_type = 'transformer', max_len = 128):
     # Tokenize our examples with truncation and padding, but keep the overflows using a stride. This results
     # in one example possible giving several features when a context is long, each of those features having a
     # context that overlaps a bit the context of the previous feature.
-    if 'bert' in model_name:
+    if 'transformer' in model_type:
         tokenized_examples = tokenizer(
             examples["question"],
             examples["context"],
