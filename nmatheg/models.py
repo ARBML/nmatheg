@@ -96,7 +96,7 @@ class BaseTextClassficationModel:
             print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
 
             val_accuracy = results['accuracy']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
 
@@ -185,6 +185,7 @@ class BaseTokenClassficationModel:
         self.num_labels = config['num_labels']
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
+        self.labels = config['labels']
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.metric  = load_metric("seqeval")
         self.accelerator = Accelerator()
@@ -221,7 +222,7 @@ class BaseTokenClassficationModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
             val_accuracy = valid_metrics['f1']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -248,7 +249,7 @@ class BaseTokenClassficationModel:
             
             predictions_gathered = self.accelerator.gather(predictions)
             labels_gathered = self.accelerator.gather(labels)
-            preds, refs = get_labels(predictions_gathered, labels_gathered)
+            preds, refs = get_labels(predictions_gathered, labels_gathered, self.labels)
             self.metric.add_batch(
                 predictions=preds,
                 references=refs,
@@ -350,7 +351,7 @@ class BaseQuestionAnsweringModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
             val_accuracy = valid_metrics['f1']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -496,7 +497,7 @@ class BaseMachineTranslationModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid BLEU {valid_metrics['bleu']:.4f}")
 
             val_accuracy = valid_metrics['bleu']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -546,9 +547,10 @@ class BaseMachineTranslationModel:
           labels  = self.get_lists(labels)
           
           decoded_preds = self.tokenizer.decode_sentences(preds)
+          decoded_preds = [stmt.replace(" .", ".") for stmt in decoded_preds]
 
           decoded_labels = self.tokenizer.decode_sentences(labels)
-          decoded_labels = [[stmt] for stmt in decoded_labels]
+          decoded_labels = [[stmt.replace(" .", ".")] for stmt in decoded_labels]
 
           result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
           result = {"bleu": result["score"]}
