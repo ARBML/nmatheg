@@ -25,12 +25,12 @@ def aggregate_tokens(dataset, config, data_config, max_len = 128):
     return DatasetDict(new_dataset) 
 
 # https://github.com/huggingface/transformers/blob/44f5b260fe7a69cbd82be91b58c62a2879d530fa/examples/pytorch/token-classification/run_ner_no_trainer.py#L353
-def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'bert', max_len = 128):
+def tokenize_and_align_labels(dataset, tokenizer, data_config, model_type = 'transformer', max_len = 128):
 
     token_col = data_config['text']
     tag_col = data_config['label']
 
-    if 'bert' in model_type:
+    if 'transformer' in model_type:
         tokenized_inputs = tokenizer(
             dataset[token_col],
             max_length=max_len,
