@@ -1,5 +1,6 @@
 import tkseem as tk
 import bpe_surgery
+import json 
 
 def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
     if tok_name == "WordTokenizer":
@@ -27,3 +28,7 @@ def get_preprocessing_args(config):
         else:
             args[key] = val 
     return args
+
+def save_json(ob, save_path):
+  with open(save_path, 'w') as handle:
+    json.dump(dict(ob), handle)

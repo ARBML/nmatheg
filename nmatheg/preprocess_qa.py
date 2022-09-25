@@ -39,11 +39,11 @@ def overflow_to_sample_mapping(tokens, offsets, idx, max_len = 384, doc_stride =
       assert len(fixed_tokens[i]) == len(fixed_offsets[i])  
     return fixed_tokens, fixed_offsets, samplings, sequences
 
-def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_len = 128):
+def prepare_features(examples, tokenizer, data_config, model_type = 'transformer', max_len = 128):
     # Tokenize our examples with truncation and padding, but keep the overflows using a stride. This results
     # in one example possible giving several features when a context is long, each of those features having a
     # context that overlaps a bit the context of the previous feature.
-    if 'bert' in model_name:
+    if 'transformer' in model_type:
         tokenized_examples = tokenizer(
             examples["question"],
             examples["context"],
@@ -145,12 +145,6 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
             question_context = question + " <sp> "+context
             st = 0
             for word in question_context.split(" "):
-                if word == '':
-                  continue
-                
-                if word == ' ':
-                  continue 
-
                 if word == "<sp>":
                     offsets.append((0, 0))
                     tokens.append(-100)
@@ -159,7 +153,8 @@ def prepare_features(examples, tokenizer, data_config, model_name = 'bert', max_
                     token_ids = tokenizer._encode_word(word)
                     token_ids = [token_id for token_id in token_ids if token_id != tokenizer.sow_idx]
                     token_strs = tokenizer._tokenize_word(word, remove_sow=True)
-                    assert len(token_ids) == len(token_strs)
+                    if len(token_ids) != len(token_strs):
+                        continue
                     for j, token_id in enumerate(token_ids):
                         token_str = token_strs[j]
                         tokens.append(token_id)

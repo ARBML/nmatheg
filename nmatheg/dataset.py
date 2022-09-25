@@ -38,9 +38,12 @@ def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
     return dataset 
 
 
-def clean_dataset(dataset, config, data_config):
-    text = data_config['text']
-
+def clean_dataset(dataset, config, data_config, task = 'cls'):
+    if task == 'mt' or task == 'qa':
+        # clean target and question 
+        text = data_config['text'].split(',')[1]
+    else:
+        text = data_config['text']
     args = get_preprocessing_args(config)
     cleaner = tn.Tnkeeh(**args)
     dataset = cleaner.clean_hf_dataset(dataset, text)
@@ -87,15 +90,18 @@ def create_dataset(config, data_config, vocab_size = 300,
         dataset = load_dataset(hf_dataset_name)
     
     
-    if task_name != 'qa' and task_name != 'mt':
-        dataset = clean_dataset(dataset, config, data_config)
+    dataset = clean_dataset(dataset, config, data_config, task = task_name)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
     print(dataset)
+    if 'birnn' in model_name:
+      model_type = 'rnn'
+    else:
+      model_type = 'transformer'
     if task_name == 'cls':
         # tokenize data
-        if 'bert' in model_name:
+        if 'birnn' not in model_name:
           tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
@@ -115,12 +121,11 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
-        
         dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
 
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
-        if 'bert' in model_name:
+        if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'labels']
         else:
@@ -142,12 +147,12 @@ def create_dataset(config, data_config, vocab_size = 300,
         
         print('aligining the tokens ...')
         for split in dataset:
-            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_name)
+            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
                                                 , batched=True, remove_columns=dataset[split].column_names)
         # dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     
     elif task_name == 'qa':
-        if 'bert' in model_name:
+        if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
@@ -168,13 +173,13 @@ def create_dataset(config, data_config, vocab_size = 300,
 
 
         for split in dataset:
-          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_name = model_name)
+          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
-        trg_lang, src_lang = data_config['text'].split(",")
+        src_lang, trg_lang = data_config['text'].split(",")
 
-        if 'T5' in model_name:
+        if 'birnn' not in model_name:
              
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             def preprocess(dataset):

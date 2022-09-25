@@ -28,25 +28,26 @@ class BiRNN(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.fc = nn.Linear(2*hidden_dim, hidden_dim)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.fc = nn.Linear(2*hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         
     def forward(self, 
                 input_ids,
-                labels):
-
+                labels = None):
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
         out,h = self.bigru3(out)
         logits = self.fc(out[:,0,:])
-        loss = self.compute_loss(logits, labels)
-        return {'loss':loss,
-                'logits':logits} 
+        if labels is not None:
+            loss = self.compute_loss(logits, labels)
+            return {'loss':loss,
+                    'logits':logits}
+        return {'logits': logits} 
     
     def compute_loss(self, logits, labels):
         loss_fct = nn.CrossEntropyLoss()
@@ -70,7 +71,7 @@ class BaseTextClassficationModel:
         train_dataset, valid_dataset, test_dataset = datasets 
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
@@ -95,7 +96,7 @@ class BaseTextClassficationModel:
             print(f"Epoch {epoch} Valid Loss {results['loss']:.4f} Valid Accuracy {results['accuracy']:.4f}")
 
             val_accuracy = results['accuracy']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
 
@@ -150,25 +151,28 @@ class BiRNNForTokenClassification(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True, batch_first = True)
         self.fc = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         
     def forward(self, 
                 input_ids,
-                labels):
+                labels = None):
 
         embedded = self.embedding(input_ids)        
         out,h = self.bigru1(embedded)
         out,h = self.bigru2(out)
         out,h = self.bigru3(out)
         logits = self.fc(out)
-        loss = self.compute_loss(logits, labels)
-        return {'loss':loss,
-                'logits':logits} 
+        if labels is not None:
+            loss = self.compute_loss(logits, labels)
+            return {'loss':loss,
+                    'logits':logits}
+        else:
+            return {'logits':logits}  
     
     def compute_loss(self, logits, labels):
         loss_fct = nn.CrossEntropyLoss()
@@ -181,6 +185,7 @@ class BaseTokenClassficationModel:
         self.num_labels = config['num_labels']
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
+        self.labels = config['labels']
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.metric  = load_metric("seqeval")
         self.accelerator = Accelerator()
@@ -192,7 +197,7 @@ class BaseTokenClassficationModel:
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
 
         train_dataset, valid_dataset, test_dataset = datasets 
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         for epoch in range(epochs):
             accuracy = 0 
@@ -217,7 +222,7 @@ class BaseTokenClassficationModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
             val_accuracy = valid_metrics['f1']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -244,7 +249,7 @@ class BaseTokenClassficationModel:
             
             predictions_gathered = self.accelerator.gather(predictions)
             labels_gathered = self.accelerator.gather(labels)
-            preds, refs = get_labels(predictions_gathered, labels_gathered)
+            preds, refs = get_labels(predictions_gathered, labels_gathered, self.labels)
             self.metric.add_batch(
                 predictions=preds,
                 references=refs,
@@ -311,7 +316,7 @@ class BaseQuestionAnsweringModel:
         train_loader = copy.deepcopy(train_dataset)
         train_loader.set_format(type='torch', columns=self.columns)
         train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size, shuffle = True)
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
 
         for epoch in range(epochs):
@@ -346,7 +351,7 @@ class BaseQuestionAnsweringModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid F1 {valid_metrics['f1']:.4f}")
 
             val_accuracy = valid_metrics['f1']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -398,9 +403,9 @@ class BiRNNForQuestionAnswering(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, hidden_dim)
-        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True)
-        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True)
+        self.bigru1 = nn.GRU(hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru2 = nn.GRU(2*hidden_dim, hidden_dim, bidirectional=True, batch_first = True)
+        self.bigru3 = nn.GRU(2*hidden_dim, hidden_dim//2, bidirectional=True, batch_first = True)
         self.qa_outputs = nn.Linear(hidden_dim, num_labels)
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
@@ -418,11 +423,16 @@ class BiRNNForQuestionAnswering(nn.Module):
         start_logits, end_logits = logits.split(1, dim=-1)
         start_logits = start_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
         end_logits = end_logits.squeeze(-1).contiguous()  # (bs, max_query_len)
-        loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
-        return {'loss':loss,
-                'logits':logits,
-                'start_logits':start_logits,
-                'end_logits':end_logits} 
+        if start_positions is not None:
+            loss = self.compute_loss(start_logits, end_logits, start_positions, end_positions)
+            return {'loss':loss,
+                    'logits':logits,
+                    'start_logits':start_logits,
+                    'end_logits':end_logits}
+        else:
+            return {'logits':logits,
+                    'start_logits':start_logits,
+                    'end_logits':end_logits}
     
     def compute_loss(self, start_logits, end_logits, start_positions, end_positions):
         loss_fct = nn.CrossEntropyLoss(ignore_index=0)
@@ -463,7 +473,7 @@ class BaseMachineTranslationModel:
         self.metric = load("sacrebleu")
         train_dataset, valid_dataset, test_dataset = datasets
 
-        filepath = os.path.join(save_dir, 'model.pth')
+        filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         
         for epoch in range(epochs):
@@ -487,7 +497,7 @@ class BaseMachineTranslationModel:
             print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid BLEU {valid_metrics['bleu']:.4f}")
 
             val_accuracy = valid_metrics['bleu']
-            if val_accuracy > best_accuracy:
+            if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
@@ -537,9 +547,10 @@ class BaseMachineTranslationModel:
           labels  = self.get_lists(labels)
           
           decoded_preds = self.tokenizer.decode_sentences(preds)
+          decoded_preds = [stmt.replace(" .", ".") for stmt in decoded_preds]
 
           decoded_labels = self.tokenizer.decode_sentences(labels)
-          decoded_labels = [[stmt] for stmt in decoded_labels]
+          decoded_labels = [[stmt.replace(" .", ".")] for stmt in decoded_labels]
 
           result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
           result = {"bleu": result["score"]}
@@ -657,17 +668,19 @@ class Seq2SeqMachineTranslation(nn.Module):
         assert self.encoder.n_layers == self.decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
-    def forward(self, input_ids, labels, teacher_forcing_ratio = 0.5, mode = "train"):
+    def forward(self, input_ids, labels = None, teacher_forcing_ratio = 0.5, mode = "train"):
         src = torch.transpose(input_ids, 0, 1)
-        trg = torch.transpose(labels, 0, 1)
+        
+        if labels is not None:
+            trg = torch.transpose(labels, 0, 1)
 
         #src = [src len, batch size]
         #trg = [trg len, batch size]
         #teacher_forcing_ratio is probability to use teacher forcing
         #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
 
-        batch_size = trg.shape[1]
-        trg_len = trg.shape[0]
+        batch_size = src.shape[1]
+        trg_len = src.shape[0]
 
         trg_vocab_size = self.decoder.output_dim
         
@@ -701,11 +714,13 @@ class Seq2SeqMachineTranslation(nn.Module):
             
             outputs[t] = output
         
-        
-        loss = self.compute_loss(outputs, trg)
-        return {'loss':loss,
-              'outputs':torch.transpose(outputs.argmax(-1), 0, 1)
-              } 
+        if labels is not None:
+            loss = self.compute_loss(outputs, trg)
+            return {'loss':loss,
+                'outputs':torch.transpose(outputs.argmax(-1), 0, 1)
+                }
+        else:
+            return {'outputs': torch.transpose(outputs.argmax(-1), 0, 1)} 
 
     def compute_loss(self, output, trg):
         loss_fct = nn.CrossEntropyLoss(ignore_index = self.tokenizer.pad_idx)
