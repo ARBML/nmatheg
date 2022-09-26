@@ -42,12 +42,19 @@ def clean_dataset(dataset, config, data_config, task = 'cls'):
     if task == 'mt' or task == 'qa':
         # clean target and question 
         text = data_config['text'].split(',')[1]
+    if task == 'nli':
+        premise, hypothesis = data_config['text'].split(',')
+        args = get_preprocessing_args(config)
+        cleaner = tn.Tnkeeh(**args)
+        dataset = cleaner.clean_hf_dataset(dataset, premise)
+        dataset = cleaner.clean_hf_dataset(dataset, hypothesis)
+        return dataset
     else:
         text = data_config['text']
-    args = get_preprocessing_args(config)
-    cleaner = tn.Tnkeeh(**args)
-    dataset = cleaner.clean_hf_dataset(dataset, text)
-    return dataset 
+        args = get_preprocessing_args(config)
+        cleaner = tn.Tnkeeh(**args)
+        dataset = cleaner.clean_hf_dataset(dataset, text)
+        return dataset 
 
 def write_data_for_train(dataset, text, task = 'cls'):
     data = []
@@ -131,7 +138,10 @@ def create_dataset(config, data_config, vocab_size = 300,
         premise, hypothesis = data_config['text'].split(",")
         if 'birnn' not in model_name:
           tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-          dataset = dataset.map(lambda examples:tokenizer(*(examples[premise], examples[hypothesis]), truncation=True, padding='max_length'), batched=True)
+          def concat(examples):
+            texts = (examples[premise], examples[hypothesis])
+            result = tokenizer(*texts, truncation=True, padding='max_length')
+          dataset = dataset.map(concat, batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -142,10 +152,17 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config['text'])
+                write_data_for_train(dataset['train'], data_config['text'], task = 'nli')
                 tokenizer.train(file_path = 'data.txt')
                 tokenizer.save(f"{tok_save_path}/")
-                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[hypothesis]+ ' ' + examples[premise], out_length= max_tokens)}, batched=True)
+
+                def concat(example):
+                  example["text"] = example[premise] + ' ' + example[hypothesis]
+                  return example
+
+                dataset = dataset.map(concat)
+                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
+
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
         dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
