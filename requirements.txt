@@ -2,6 +2,11 @@ tnkeeh
 tkseem
 tfds-nightly
 datasets
-transformers
+transformers[sentencepiece]
 accelerate
 seqeval
+sacrebleu
+evaluate
+pandas
+fsspec==2021.10
+s3fs==2021.10

@@ -1,11 +1,22 @@
 import tkseem as tk
 import bpe_surgery
+import json 
 
-def get_tokenizer(tok_name, vocab_size = 300):
-    tokenizers = {'SentencePieceTokenizer':tk.SentencePieceTokenizer, 'WordTokenizer':tk.WordTokenizer, 'CharacterTokenizer':tk.CharacterTokenizer,
-         'MorphologicalTokenizer':tk.MorphologicalTokenizer, 'RandomTokenizer':tk.RandomTokenizer, 'DisjointLetterTokenizer':tk.DisjointLetterTokenizer, 
-         'bpe':bpe_surgery.bpe(vocab_size,lang='ar'), 'bpe-morph':bpe_surgery.bpe(vocab_size, morph = True, lang='ar', morph_with_sep=True)}
-    return tokenizers[tok_name] 
+def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
+    if tok_name == "WordTokenizer":
+      return tk.WordTokenizer(vocab_size=vocab_size)
+    elif tok_name == "SentencePieceTokenizer":
+      return tk.SentencePieceTokenizer(vocab_size=vocab_size)
+    elif tok_name == "CharacterTokenizer":
+      return tk.CharacterTokenizer(vocab_size=vocab_size)
+    elif tok_name == "RandomTokenizer":
+      return tk.RandomTokenizer(vocab_size=vocab_size)
+    elif tok_name == "DisjointLetterTokenizer":
+      return tk.DisjointLetterTokenizer(vocab_size=vocab_size)
+    elif tok_name == "MorphologicalTokenizer":
+      return tk.MorphologicalTokenizer(vocab_size=vocab_size)
+    else:
+      raise('Unrecognized tokenizer name!')
 
 def get_preprocessing_args(config):
     args = {}
@@ -17,3 +28,7 @@ def get_preprocessing_args(config):
         else:
             args[key] = val 
     return args
+
+def save_json(ob, save_path):
+  with open(save_path, 'w') as handle:
+    json.dump(dict(ob), handle)

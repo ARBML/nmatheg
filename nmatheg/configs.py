@@ -1,5 +1,6 @@
 import configparser
-def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
+def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 64, 
+                          max_train_samples = -1, preprocessing = {}):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -17,32 +18,22 @@ def create_default_config(batch_size = 4, epochs = 5, lr = 5e-5):
         'remove_repeated_chars' : False,
     }
 
+    for arg in preprocessing:
+        config['preprocessing'][arg] = preprocessing[arg]
+
     config['tokenization'] = {
-        'tokenizer_name' : 'WordTokenizer',
-        'vocab_size' : 300,
-        'max_tokens' : 128,
-        'tok_save_path': 'ckpts/bpe-ar-300'
+        'max_tokens' : max_tokens,
+        'tok_save_path': 'ckpts', 
+        'max_train_samples': max_train_samples
     }
 
     config['log'] = {'print_every':10}
 
     config['train'] = {
-        'save_dir' : '.',
+        'save_dir' : 'ckpts',
         'epochs' : epochs,
         'batch_size' : batch_size,
         'lr': lr, 
-        'runs': 1 
+        'runs': runs 
     }
     return config 
-
-def create_configs(config, data_config):
-    dataset_name = config['dataset']['dataset_name']
-    train_config = {'epochs':int(config['train']['epochs']),
-                    'save_dir':config['train']['save_dir'],
-                    'batch_size':int(config['train']['batch_size']),
-                    'lr':float(config['train']['lr'])}
-
-    model_config = {'model_name':config['model']['model_name'],
-                    'vocab_size':int(config['tokenization']['vocab_size']),
-                    'num_labels':int(data_config[dataset_name]['num_labels'])}
-    return train_config, model_config

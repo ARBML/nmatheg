@@ -142,3 +142,4 @@ cython_debug/
 *data*.txt
 data/
 ckpts/ 
+tmp
