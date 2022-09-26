@@ -153,6 +153,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = "", hypot
   tokenizer_save_path = tokenizer_config["save_path"]
   max_tokens = tokenizer_config["max_tokens"]
   vocab_size = tokenizer_config["vocab_size"]
+  num_labels = model_config["num_labels"]
 
   if model_name == "birnn":
     if task_name == "mt":
@@ -241,7 +242,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = "", hypot
     
     
     if task_name == "cls":
-      config = AutoConfig.from_pretrained(model_name)
+      config = AutoConfig.from_pretrained(model_name, num_labels=num_labels)
       model = AutoModelForSequenceClassification.from_pretrained(save_dir, config = config)
       tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
       encoded_review = tokenizer.encode_plus(
@@ -261,7 +262,7 @@ def predict_from_run(save_dir, sentence = "", question = "", context = "", hypot
       return labels[output['logits'].argmax(-1)]
 
     elif task_name == "nli":
-      config = AutoConfig.from_pretrained(model_name)
+      config = AutoConfig.from_pretrained(model_name, num_labels=num_labels)
       model = AutoModelForSequenceClassification.from_pretrained(save_dir, config = config)
       tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
       encoded_review = tokenizer.encode_plus(

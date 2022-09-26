@@ -141,6 +141,7 @@ def create_dataset(config, data_config, vocab_size = 300,
           def concat(examples):
             texts = (examples[premise], examples[hypothesis])
             result = tokenizer(*texts, truncation=True, padding='max_length')
+            return result
           dataset = dataset.map(concat, batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
