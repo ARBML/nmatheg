@@ -54,6 +54,10 @@ def write_data_for_train(dataset, text, task = 'cls'):
     if task == 'cls':
       for sample in dataset:
           data.append(sample[text])
+    elif task == 'nli':
+      for sample in dataset:
+          hypothesis, premise = text.split(",")
+          data.append(sample[hypothesis]+" "+sample[premise])
     elif task == 'ner':
       for sample in dataset:
           data.append(' '.join(sample[text]))
@@ -122,7 +126,29 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset.save_to_disk(f'{tok_save_path}/data/')                
             columns=['input_ids', 'labels'] 
         dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
-
+    elif task_name == 'nli':
+        # tokenize data
+        premise, hypothesis = data_config['text'].split(",")
+        if 'birnn' not in model_name:
+          tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
+          dataset = dataset.map(lambda examples:tokenizer(*(examples[premise], examples[hypothesis]), truncation=True, padding='max_length'), batched=True)
+          columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+        else:
+            tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
+            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
+            if os.path.isfile(f"{tok_save_path}/tok.model"):
+                print('loading pretrained tokenizer')
+                tokenizer.load(f"{tok_save_path}/")
+                dataset = load_from_disk(f'{tok_save_path}/data/')
+            else:
+                print('training tokenizer from scratch')
+                write_data_for_train(dataset['train'], data_config['text'])
+                tokenizer.train(file_path = 'data.txt')
+                tokenizer.save(f"{tok_save_path}/")
+                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[hypothesis]+ ' ' + examples[premise], out_length= max_tokens)}, batched=True)
+                dataset.save_to_disk(f'{tok_save_path}/data/')                
+            columns=['input_ids', 'labels'] 
+        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
         if 'birnn' not in model_name:

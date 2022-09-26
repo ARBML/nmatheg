@@ -88,7 +88,7 @@ class TrainStrategy:
                                   'labels':self.data_config['labels']}
 
               print(self.model_config)
-              if task_name == 'cls':                  
+              if task_name in ['cls', 'nli']:                  
                 if 'birnn' in model_name:
                   self.model = SimpleClassificationModel(self.model_config)
                 else:
@@ -143,7 +143,7 @@ class TrainStrategy:
                 json.dump(results, handle)
     return results    
 
-def predict_from_run(save_dir, sentence = "", question = "", context = ""):
+def predict_from_run(save_dir, sentence = "", question = "", context = "", hypothesis = "", premise = ""):
   data_config = json.load(open(f"{save_dir}/data_config.json"))
   tokenizer_config = json.load(open(f"{save_dir}/tokenizer_config.json"))
   model_config = json.load(open(f"{save_dir}/model_config.json"))
@@ -181,6 +181,18 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       labels = data_config['labels'].split(",")
       return labels[out['logits'].argmax(-1)]
     
+    elif task_name == "nli":
+      tokenizer = get_tokenizer(tokenizer_name, vocab_size = vocab_size)
+      tokenizer.load(tokenizer_save_path)
+
+      model = SimpleClassificationModel(model_config)
+      model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
+
+      encoding = tokenizer.encode_sentences([premise + " "+ hypothesis], add_boundry=True, out_length=max_tokens)
+      out = model.model(torch.tensor(encoding).to('cuda'))
+      labels = data_config['labels'].split(",")
+      return labels[out['logits'].argmax(-1)]
+
     elif task_name == "ner":
       tokenizer = get_tokenizer(tokenizer_name, vocab_size = vocab_size)
       tokenizer.load(tokenizer_save_path)
@@ -248,6 +260,26 @@ def predict_from_run(save_dir, sentence = "", question = "", context = ""):
       labels = data_config['labels'].split(",")
       return labels[output['logits'].argmax(-1)]
 
+    elif task_name == "nli":
+      config = AutoConfig.from_pretrained(model_name)
+      model = AutoModelForSequenceClassification.from_pretrained(save_dir, config = config)
+      tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
+      encoded_review = tokenizer.encode_plus(
+      premise,
+      hypothesis,
+      max_length=512,
+      add_special_tokens=True,
+      return_token_type_ids=False,
+      pad_to_max_length=True,
+      return_attention_mask=True,
+      return_tensors='pt',
+      )
+
+      input_ids = encoded_review['input_ids']
+      attention_mask = encoded_review['attention_mask']
+      output = model(input_ids, attention_mask)
+      labels = data_config['labels'].split(",")
+      return labels[output['logits'].argmax(-1)]
     elif task_name == "ner":
       labels = data_config['labels'].split(",")
       config = AutoConfig.from_pretrained(model_name, num_labels = 21, id2label = labels)
