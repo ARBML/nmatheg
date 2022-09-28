@@ -20,11 +20,12 @@ def overflow_to_sample_mapping(tokens, offsets, idx, max_len = 384, doc_stride =
     # print('length for the context ', len(context))
     while True:
         ed_idx = st_idx+max_len-q_len-1
-        pad_re = max_len - len(question+[0] + context[st_idx:ed_idx])
-        # print('pad_re ', pad_re, ' st_idx ', st_idx, ' ed_idx ', ed_idx)
+        pad_re = max_len - len(question+ [0] + context[st_idx:ed_idx])
+
+        assert len(context[st_idx:ed_idx]) > 0
         curr_tokens = question+[0] + context[st_idx:ed_idx] + [0] * pad_re
         curr_offset = q_offsets+[(0,0)] + c_offsets[st_idx:ed_idx] + [(0,0)] * pad_re
-        curr_seq = [0]*q_len+[None]+[1]*(max_len-q_len-1)
+        curr_seq = [0]*q_len+[None]+[1]*len(context[st_idx:ed_idx])+[None] * pad_re
 
         assert len(curr_tokens) == len(curr_offset) == len(curr_seq) == max_len, f"curr_tokens: {len(curr_tokens)}, curr_seq: {len(curr_seq)}"
         fixed_tokens.append(curr_tokens[:max_len])
@@ -142,26 +143,39 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
             offsets = []
             tokens = []
             sequences = []
+
             question_context = question + " <sp> "+context
             st = 0
             for word in question_context.split(" "):
+                if len(word) == 0:
+                  st += 1 
+                  continue
+                if word == " ":
+                  raise('error')
                 if word == "<sp>":
                     offsets.append((0, 0))
                     tokens.append(-100)
                     st = 0 
                 else:    
                     token_ids = tokenizer._encode_word(word)
-                    token_ids = [token_id for token_id in token_ids if token_id != tokenizer.sow_idx]
+                    token_ids = [token_id for token_id in token_ids]
                     token_strs = tokenizer._tokenize_word(word, remove_sow=True)
-                    if len(token_ids) != len(token_strs):
-                        continue
+                    if token_ids[0] == tokenizer.sow_idx:
+                      token_strs = [tokenizer.sow] + token_strs
                     for j, token_id in enumerate(token_ids):
                         token_str = token_strs[j]
                         tokens.append(token_id)
-                        offsets.append((st, st+len(token_str)))
-                        st += len(token_str)
+                        if token_str == tokenizer.sow:
+                          offsets.append((st, st))
+                        else:
+                          offsets.append((st, st+len(token_str)))
+                          st += len(token_str)
                     st += 1 # for space
+            
+            
             tokens, offsets, samplings, sequences = overflow_to_sample_mapping(tokens, offsets, i, max_len = max_len)
+
+
             sample_mapping += samplings
             input_ids += tokens
             offset_mapping += offsets
@@ -170,6 +184,7 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
         tokenized_examples = {'input_ids':input_ids, 'sequence_ids':sequence_ids, 'offset_mapping': offset_mapping, 'overflow_to_sample_mapping': sample_mapping}
         tokenized_examples["start_positions"] = []
         tokenized_examples["end_positions"] = []
+
         for i, offsets in enumerate(offset_mapping):
             # We will label impossible answers with the index of the CLS token.
             input_ids = tokenized_examples["input_ids"][i]
@@ -196,7 +211,6 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
                 token_start_index = 0
                 while sequence_ids[token_start_index] != 1:
                     token_start_index += 1
-
                 # End token index of the current span in the text.
                 token_end_index = len(input_ids) - 1
                 while sequence_ids[token_end_index] != 1:
@@ -206,6 +220,7 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
                 if not (offsets[token_start_index][0] <= start_char and offsets[token_end_index][1] >= end_char):
                     tokenized_examples["start_positions"].append(cls_index)
                     tokenized_examples["end_positions"].append(cls_index)
+                    
                 else:
                     # Otherwise move the token_start_index and token_end_index to the two ends of the answer.
                     # Note: we could go after the last offset if the answer is the last word (edge case).
@@ -233,5 +248,4 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
                 (o if sequence_ids[k] == context_index else None)
                 for k, o in enumerate(tokenized_examples["offset_mapping"][i])
             ]
-   
         return tokenized_examples
