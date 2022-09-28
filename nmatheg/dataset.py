@@ -100,8 +100,8 @@ def create_dataset(config, data_config, vocab_size = 300,
     else:
         dataset = load_dataset(hf_dataset_name)
     
-    
-    dataset = clean_dataset(dataset, config, data_config, task = task_name)
+    if task_name != "qa":
+      dataset = clean_dataset(dataset, config, data_config, task = task_name)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
@@ -217,7 +217,7 @@ def create_dataset(config, data_config, vocab_size = 300,
 
 
         for split in dataset:
-          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type)
+          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "

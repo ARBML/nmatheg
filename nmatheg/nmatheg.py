@@ -227,17 +227,19 @@ def predict_from_run(save_dir, sentence = "", question = "", context = "", hypot
       return output
     
     elif task_name == "qa":
-      sentence  = question + ' ' + context
       tokenizer = get_tokenizer(tokenizer_name, vocab_size = vocab_size)
       tokenizer.load(tokenizer_save_path)
 
       model = SimpleQuestionAnsweringModel(model_config)
       model.model.load_state_dict(torch.load(f"{save_dir}/pytorch_model.bin"))
-      encoding = tokenizer.encode_sentences([sentence], out_length=max_tokens)
-      out = model.model(torch.tensor(encoding).to('cuda'))
+      question_encoding = tokenizer.encode_sentences([question])[0]
+      context_encoding = tokenizer.encode_sentences([context])[0]
+      pad_re = max_tokens - (len(question_encoding) + len(context_encoding) + 1)
+      encoding = question_encoding +[0]+context_encoding + [0] * pad_re
+      out = model.model(torch.tensor([encoding]).to('cuda'))
       start_preds = out['start_logits'].argmax(-1).cpu().numpy()
-      end_preds = out['end_logits'].argmax(-1).cpu().numpy()      
-      return encoding[0][start_preds[0]:end_preds[0]]
+      end_preds = out['end_logits'].argmax(-1).cpu().numpy()     
+      return tokenizer.decode_sentences([encoding[start_preds[0]:end_preds[0]]])
   else:
     
     
