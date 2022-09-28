@@ -15,6 +15,12 @@ def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
       return tk.DisjointLetterTokenizer(vocab_size=vocab_size)
     elif tok_name == "MorphologicalTokenizer":
       return tk.MorphologicalTokenizer(vocab_size=vocab_size)
+    elif tok_name == "bpe":
+      return bpe_surgery.bpe(vocab_size=vocab_size)
+    elif tok_name == "bpe-morph":
+      return bpe_surgery.bpe(vocab_size=vocab_size, morph=True, morph_with_sep=True)
+    elif tok_name == "bpe-seg":
+      return bpe_surgery.bpe(vocab_size=vocab_size, seg = True)
     else:
       raise('Unrecognized tokenizer name!')
 
