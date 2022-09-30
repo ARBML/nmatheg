@@ -88,7 +88,7 @@ def write_data_for_train(dataset, text, path, task = 'cls'):
     open(f'{path}/data.txt', 'w').write(('\n').join(data))
 
 def create_dataset(config, data_config, vocab_size = 300, 
-                   model_name = "birnn", tokenizer_name = "bpe"):
+                   model_name = "birnn", tokenizer_name = "bpe", clean = True):
 
     hf_dataset_name = data_config['name']
     dataset_name = hf_dataset_name.split("/")[-1] #in case we have / in the name
@@ -110,7 +110,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     else:
         dataset = load_dataset(hf_dataset_name)
     
-    if task_name != "qa":
+    if task_name != "qa" and clean:
       dataset = clean_dataset(dataset, config, data_config, task = task_name)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
