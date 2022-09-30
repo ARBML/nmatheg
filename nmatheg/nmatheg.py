@@ -55,7 +55,7 @@ class TrainStrategy:
     if os.path.isfile(results_path):
       f = open(results_path)
       results = json.load(f)
-    print(results)
+
     for tokenizer_name in tokenizers:
       if not tokenizer_name in results:
         results[tokenizer_name] = {}

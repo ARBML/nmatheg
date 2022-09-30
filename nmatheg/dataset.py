@@ -125,6 +125,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         if 'birnn' not in model_name:
           tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
           dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
+          dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -139,9 +140,10 @@ def create_dataset(config, data_config, vocab_size = 300,
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
+                dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
                 dataset.save_to_disk(data_save_path)                
-            columns=['input_ids', 'labels'] 
-        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+            columns=['input_ids', 'labels']
+             
     elif task_name == 'nli':
         # tokenize data
         premise, hypothesis = data_config['text'].split(",")
@@ -171,14 +173,18 @@ def create_dataset(config, data_config, vocab_size = 300,
 
                 dataset = dataset.map(concat)
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
-
+                dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
                 dataset.save_to_disk(data_save_path)                
-            columns=['input_ids', 'labels'] 
-        dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+            columns=['input_ids', 'labels']
+
     elif task_name == 'ner':
         dataset = aggregate_tokens(dataset, config, data_config)
         if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            print('aligining the tokens ...')
+            for split in dataset:
+                dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
+                                                    , batched=True, remove_columns=dataset[split].column_names)
             columns=['input_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -192,18 +198,20 @@ def create_dataset(config, data_config, vocab_size = 300,
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
+                print('aligining the tokens ...')
+                for split in dataset:
+                    dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
+                                                        , batched=True, remove_columns=dataset[split].column_names)
                 dataset.save_to_disk(data_save_path)                
 
             columns=['input_ids', 'labels'] 
         
-        print('aligining the tokens ...')
-        for split in dataset:
-            dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
-                                                , batched=True, remove_columns=dataset[split].column_names)
-    
     elif task_name == 'qa':
         if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            for split in dataset:
+                    dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
+                                                , batched=True, remove_columns=dataset[split].column_names)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -217,12 +225,12 @@ def create_dataset(config, data_config, vocab_size = 300,
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
+                for split in dataset:
+                    dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
+                                                , batched=True, remove_columns=dataset[split].column_names)
                 dataset.save_to_disk(data_save_path)
             columns=['input_ids', 'start_positions', 'end_positions']  
 
-        for split in dataset:
-          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
-                                                , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
         src_lang, trg_lang = data_config['text'].split(",")
@@ -262,7 +270,6 @@ def create_dataset(config, data_config, vocab_size = 300,
                 src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
                 trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
 
-
                 def preprocess(dataset):
                     inputs = [ex for ex in dataset[src_lang]]
                     targets = [ex for ex in dataset[trg_lang]]
@@ -275,7 +282,6 @@ def create_dataset(config, data_config, vocab_size = 300,
                 
                 for split in dataset: 
                     dataset[split] = preprocess(dataset[split]) 
-                
                 
                 dataset.save_to_disk(f'{tok_save_path}/data/')  
 
