@@ -16,13 +16,12 @@ def overflow_to_sample_mapping(tokens, offsets, idx, max_len = 384, doc_stride =
     samplings = []
     sequences = []
 
-    # print('length for the question ', len(question))
-    # print('length for the context ', len(context))
     while True:
         ed_idx = st_idx+max_len-q_len-1
         pad_re = max_len - len(question+ [0] + context[st_idx:ed_idx])
 
-        assert len(context[st_idx:ed_idx]) > 0
+        if len(context[st_idx:ed_idx]) == 0:
+          break 
         curr_tokens = question+[0] + context[st_idx:ed_idx] + [0] * pad_re
         curr_offset = q_offsets+[(0,0)] + c_offsets[st_idx:ed_idx] + [(0,0)] * pad_re
         curr_seq = [0]*q_len+[None]+[1]*len(context[st_idx:ed_idx])+[None] * pad_re

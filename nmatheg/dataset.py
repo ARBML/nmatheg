@@ -39,10 +39,19 @@ def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
 
 
 def clean_dataset(dataset, config, data_config, task = 'cls'):
-    if task == 'mt' or task == 'qa':
-        # clean target and question 
-        text = data_config['text'].split(',')[1]
-    if task == 'nli':
+    if task == 'mt':
+        sourceString, targetString = data_config['text'].split(',')
+        args = get_preprocessing_args(config)
+        cleaner = tn.Tnkeeh(**args)
+        dataset = cleaner.clean_hf_dataset(dataset, targetString)
+        return dataset
+    elif task == 'qa':
+        question, context = data_config['text'].split(',')
+        args = get_preprocessing_args(config)
+        cleaner = tn.Tnkeeh(**args)
+        dataset = cleaner.clean_hf_dataset(dataset, question)
+        return dataset
+    elif task == 'nli':
         premise, hypothesis = data_config['text'].split(',')
         args = get_preprocessing_args(config)
         cleaner = tn.Tnkeeh(**args)
@@ -50,13 +59,12 @@ def clean_dataset(dataset, config, data_config, task = 'cls'):
         dataset = cleaner.clean_hf_dataset(dataset, hypothesis)
         return dataset
     else:
-        text = data_config['text']
         args = get_preprocessing_args(config)
         cleaner = tn.Tnkeeh(**args)
-        dataset = cleaner.clean_hf_dataset(dataset, text)
+        dataset = cleaner.clean_hf_dataset(dataset, data_config['text'])
         return dataset 
 
-def write_data_for_train(dataset, text, task = 'cls'):
+def write_data_for_train(dataset, text, path, task = 'cls'):
     data = []
     if task == 'cls':
       for sample in dataset:
@@ -77,7 +85,7 @@ def write_data_for_train(dataset, text, task = 'cls'):
           context, question = text.split(",")
           data.append(sample[context]+" "+sample[question])
 
-    open(f'data.txt', 'w').write(('\n').join(data))
+    open(f'{path}/data.txt', 'w').write(('\n').join(data))
 
 def create_dataset(config, data_config, vocab_size = 300, 
                    model_name = "birnn", tokenizer_name = "bpe"):
@@ -91,6 +99,8 @@ def create_dataset(config, data_config, vocab_size = 300,
     batch_size = int(config['train']['batch_size'])
     task_name = data_config['task']
     save_dir = config['train']['save_dir']
+    tok_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
+    data_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
 
     # clean and load data
     # load_dataset_kwargs = config['load_dataset_kwargs']
@@ -100,8 +110,8 @@ def create_dataset(config, data_config, vocab_size = 300,
     else:
         dataset = load_dataset(hf_dataset_name)
     
-    
-    dataset = clean_dataset(dataset, config, data_config, task = task_name)
+    if task_name != "qa":
+      dataset = clean_dataset(dataset, config, data_config, task = task_name)
 
     dataset = split_dataset(dataset, data_config, max_train_samples=max_train_samples)
     examples = copy.deepcopy(dataset)
@@ -119,18 +129,17 @@ def create_dataset(config, data_config, vocab_size = 300,
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
-            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
-                tokenizer.load(f"{tok_save_path}/")
-                dataset = load_from_disk(f'{tok_save_path}/data/')
+                tokenizer.load(tok_save_path)
+                dataset = load_from_disk(data_save_path)
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config['text'])
-                tokenizer.train(file_path = 'data.txt')
-                tokenizer.save(f"{tok_save_path}/")
+                write_data_for_train(dataset['train'], data_config['text'], data_save_path)
+                tokenizer.train(file_path = f'{data_save_path}/data.txt')
+                tokenizer.save(tok_save_path)
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
-                dataset.save_to_disk(f'{tok_save_path}/data/')                
+                dataset.save_to_disk(data_save_path)                
             columns=['input_ids', 'labels'] 
         dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     elif task_name == 'nli':
@@ -146,16 +155,15 @@ def create_dataset(config, data_config, vocab_size = 300,
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
-            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
-                tokenizer.load(f"{tok_save_path}/")
-                dataset = load_from_disk(f'{tok_save_path}/data/')
+                tokenizer.load(tok_save_path)
+                dataset = load_from_disk(data_save_path)
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config['text'], task = 'nli')
-                tokenizer.train(file_path = 'data.txt')
-                tokenizer.save(f"{tok_save_path}/")
+                write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = 'nli')
+                tokenizer.train(file_path = '{data_save_path}/data.txt')
+                tokenizer.save(tok_save_path)
 
                 def concat(example):
                   example["text"] = example[premise] + ' ' + example[hypothesis]
@@ -164,7 +172,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = dataset.map(concat)
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
 
-                dataset.save_to_disk(f'{tok_save_path}/data/')                
+                dataset.save_to_disk(data_save_path)                
             columns=['input_ids', 'labels'] 
         dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     elif task_name == 'ner':
@@ -175,17 +183,16 @@ def create_dataset(config, data_config, vocab_size = 300,
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
-            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
-                tokenizer.load(f"{tok_save_path}/")
-                dataset = load_from_disk(f'{tok_save_path}/data/')
+                tokenizer.load(tok_save_path)
+                dataset = load_from_disk(data_save_path)
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config['text'], task = task_name)
-                tokenizer.train(file_path = 'data.txt')
-                tokenizer.save(f"{tok_save_path}/")
-                dataset.save_to_disk(f'{tok_save_path}/data/')                
+                write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
+                tokenizer.train(file_path = f'{data_save_path}/data.txt')
+                tokenizer.save(tok_save_path)
+                dataset.save_to_disk(data_save_path)                
 
             columns=['input_ids', 'labels'] 
         
@@ -193,7 +200,6 @@ def create_dataset(config, data_config, vocab_size = 300,
         for split in dataset:
             dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
                                                 , batched=True, remove_columns=dataset[split].column_names)
-        # dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
     
     elif task_name == 'qa':
         if 'birnn' not in model_name:
@@ -202,22 +208,20 @@ def create_dataset(config, data_config, vocab_size = 300,
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
-            tok_save_path = f"{save_dir}/{tokenizer.name}/{dataset_name}/"
             if os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
-                tokenizer.load(f"{tok_save_path}/")
-                dataset = load_from_disk(f'{tok_save_path}/data/')
+                tokenizer.load(tok_save_path)
+                dataset = load_from_disk(data_save_path)
             else:
                 print('training tokenizer from scratch')
-                write_data_for_train(dataset['train'], data_config['text'], task = task_name)
-                tokenizer.train(file_path = 'data.txt')
-                tokenizer.save(f"{tok_save_path}/")
-                dataset.save_to_disk(f'{tok_save_path}/data/')
+                write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
+                tokenizer.train(file_path = f'{data_save_path}/data.txt')
+                tokenizer.save(tok_save_path)
+                dataset.save_to_disk(data_save_path)
             columns=['input_ids', 'start_positions', 'end_positions']  
 
-
         for split in dataset:
-          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type)
+          dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
                                                 , batched=True, remove_columns=dataset[split].column_names)
     elif task_name == 'mt':
         prefix = "translate English to Arabic: "
@@ -243,8 +247,6 @@ def create_dataset(config, data_config, vocab_size = 300,
             src_tokenizer = get_tokenizer(tokenizer_name, lang = 'en', vocab_size= vocab_size)
             trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar', vocab_size= vocab_size)
 
-            tok_save_path = f"{save_dir}/{trg_tokenizer.name}/{dataset_name}/"
-
             if os.path.isfile(f"{tok_save_path}/trg_tok.model"):
                 print('loading pretrained tokenizers')
                 src_tokenizer.load(f"{tok_save_path}/", name = "src_tok")
@@ -252,11 +254,11 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
                 print('training tokenizer from scratch')
-                open('src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
-                open('trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
+                open(f'{data_save_path}/src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
+                open(f'{data_save_path}/trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
 
-                src_tokenizer.train(file_path = 'src_data.txt')
-                trg_tokenizer.train(file_path = 'trg_data.txt')
+                src_tokenizer.train(file_path = f'{data_save_path}/src_data.txt')
+                trg_tokenizer.train(file_path = f'{data_save_path}/trg_data.txt')
                 src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
                 trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
 
