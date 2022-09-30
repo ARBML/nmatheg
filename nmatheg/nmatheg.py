@@ -40,6 +40,7 @@ class TrainStrategy:
     rel_path = os.path.dirname(__file__)
     data_ini_path = os.path.join(rel_path, "datasets.ini")
     self.datasets_config.read(data_ini_path)
+    self.preprocessing = preprocessing
 
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
@@ -91,7 +92,8 @@ class TrainStrategy:
               tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
                                                                       vocab_size = int(vocab_size), 
                                                                       model_name = model_name,
-                                                                      tokenizer_name = tokenizer_name)
+                                                                      tokenizer_name = tokenizer_name,
+                                                                      clean = True if len(self.preprocessing) else False)
               self.model_config = {'model_name':model_name,
                                   'vocab_size':int(vocab_size),
                                   'num_labels':int(self.data_config['num_labels']),

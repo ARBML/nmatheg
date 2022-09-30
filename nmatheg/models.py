@@ -14,13 +14,14 @@ import numpy as np
 from tqdm import tqdm
 import torch
 from torch.optim import AdamW
-from sklearn.metrics import accuracy_score
 import torch.nn as nn
 from accelerate import Accelerator
 from datasets import load_metric
 import copy 
 from .ner_utils import get_labels
 from .qa_utils import evaluate_metric
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
+
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels, hidden_dim = 128):
@@ -238,7 +239,9 @@ class BaseTokenClassficationModel:
                 }
         
     def evaluate_dataset(self, dataset):
-        accuracy = 0
+        preds = []
+        refs = []
+
         loss = 0 
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
@@ -249,22 +252,24 @@ class BaseTokenClassficationModel:
             
             predictions_gathered = self.accelerator.gather(predictions)
             labels_gathered = self.accelerator.gather(labels)
-            preds, refs = get_labels(predictions_gathered, labels_gathered, self.labels)
-            self.metric.add_batch(
-                predictions=preds,
-                references=refs,
-            )
+            pred, ref = get_labels(predictions_gathered, labels_gathered, self.labels)
+            ref = [item for sublist in ref for item in sublist]
+            pred = [item for sublist in pred for item in sublist]
+            preds.append(pred)
+            refs.append(ref)
 
             loss += loss / len(dataset)
             batch = None
-        results = self.metric.compute()
+
+        refs = [item for sublist in refs for item in sublist]
+        preds = [item for sublist in preds for item in sublist]
 
         return {
                     "loss":float(loss.cpu().detach().numpy()),
-                    "precision": results["overall_precision"],
-                    "recall": results["overall_recall"],
-                    "f1": results["overall_f1"],
-                    "accuracy": results["overall_accuracy"],
+                    "precision": precision_score(refs, preds, average = "micro"),
+                    "recall": recall_score(refs, preds, average = "micro"),
+                    "f1": f1_score(refs, preds, average = "micro"),
+                    "accuracy": accuracy_score(refs, preds),
                 }
 
 class SimpleTokenClassificationModel(BaseTokenClassficationModel):
