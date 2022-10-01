@@ -70,8 +70,15 @@ strategy.start()
 ```python
 import nmatheg as nm
 strategy = nm.TrainStrategy(
-    datasets = 'arsentd_lev,arcd,caner', 
-    models   = 'qarib/bert-base-qarib,aubmindlab/bert-base-arabertv01'
+    datasets = 'arsentd_lev,caner,arcd', 
+    models   = 'qarib/bert-base-qarib,aubmindlab/bert-base-arabertv01',
+    mode = 'finetune',
+    runs = 5,
+    lr = 1e-4,
+    epochs = 1,
+    batch_size = 8,
+    max_tokens = 128,
+    max_train_samples = 1024
 )
 strategy.start()
 ```
@@ -91,10 +98,12 @@ We are supporting huggingface datasets for Arabic. You can find the supported da
 |[hard](https://huggingface.co/datasets/hard)|This dataset contains 93,700 hotel reviews in Arabic language.The hotel reviews were collected from Booking.com website during June/July 2016.The reviews are expressed in Modern Standard Arabic as well as dialectal Arabic.The following table summarize some tatistics on the HARD Dataset.|
 |[caner](https://huggingface.co/datasets/caner)|The Classical Arabic Named Entity Recognition corpus is a new corpus of tagged data that can be useful for handling the issues in recognition of Arabic named entities.|
 |[arcd](https://huggingface.co/datasets/arcd)|Arabic Reading Comprehension Dataset (ARCD) composed of 1,395 questions posed by crowdworkers on Wikipedia articles.|
-
+|[mlqa](https://huggingface.co/datasets/mlqa)|MLQA contains QA instances in 7 languages, English, Arabic, German, Spanish, Hindi, Vietnamese and Simplified Chinese.|
+|[xnli](https://huggingface.co/datasets/xnli)|XNLI is a subset of a few thousand examples from MNLI which has been translated into a 14 different languages (some low-ish resource).|
+|[tatoeba_mt](https://huggingface.co/datasets/Helsinki-NLP/tatoeba_mt)|The Tatoeba Translation Challenge is a multilingual dataset of machine translation benchmarks derived from user-contributed translations collected by Tatoeba.org and provided as parallel corpus from OPUS.|
 ## Tasks 
 
-Currently we support text classification, named entity recognition and question answering. 
+Currently we support text classification, named entity recognition, question answering, machine translation and natural language inference. 
 
 ## Demo 
 Check this [colab notebook](https://colab.research.google.com/github/ARBML/nmatheg/blob/main/demo.ipynb) for a quick demo. 

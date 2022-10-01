@@ -149,8 +149,9 @@ def prepare_features(examples, tokenizer, data_config, model_type = 'transformer
                 if len(word) == 0:
                   st += 1 
                   continue
-                if word == " ":
-                  raise('error')
+                
+                word = word.strip()
+                
                 if word == "<sp>":
                     offsets.append((0, 0))
                     tokens.append(-100)
