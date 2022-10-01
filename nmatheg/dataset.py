@@ -233,7 +233,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                                                     , batched=True, remove_columns=dataset[split].column_names)
                 dataset.save_to_disk(data_save_path)
             else:
-                load_from_disk(data_save_path)
+                dataset = load_from_disk(data_save_path)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
