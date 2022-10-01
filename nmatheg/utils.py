@@ -1,5 +1,8 @@
 import tkseem as tk
-import bpe_surgery
+try:
+  import bpe_surgery
+except:
+  pass
 import json 
 
 def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):

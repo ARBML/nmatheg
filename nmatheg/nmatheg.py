@@ -14,7 +14,10 @@ from transformers import pipeline
 import pathlib
 
 import torch
-from bpe_surgery import bpe 
+try:
+  import bpe_surgery
+except:
+  pass
 import numpy as np
 
 

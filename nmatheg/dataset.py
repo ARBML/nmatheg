@@ -1,7 +1,10 @@
 
 import tnkeeh as tn 
 from datasets import load_dataset, load_from_disk
-from bpe_surgery import bpe
+try:
+  import bpe_surgery
+except:
+  pass
 
 import os 
 from .utils import get_preprocessing_args, get_tokenizer
