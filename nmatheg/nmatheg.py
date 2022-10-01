@@ -22,9 +22,16 @@ import numpy as np
 
 
 class TrainStrategy:
-  def __init__(self, datasets, models, tokenizers, vocab_sizes='10000',config_path= None,
+  def __init__(self, datasets, models, tokenizers= None, vocab_sizes=None, config_path= None,
                batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128, max_train_samples = -1,
-               preprocessing = {}):
+               preprocessing = {}, mode = 'finetune'):
+
+    self.mode = mode
+    modes = ['finetune', 'pretrain']
+    assert mode in modes , f"mode must be one of the following {modes}"
+    if self.mode == 'pretrain':
+      assert tokenizers is not None , "tokenizers must be set"
+      assert vocab_sizes is not None, "vocab sizes must be set"
 
     if config_path == None:
       self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs,
@@ -32,9 +39,9 @@ class TrainStrategy:
                                           preprocessing = preprocessing)
       self.config['dataset'] = {'dataset_name' : datasets}
       self.config['model'] = {'model_name' : models}
-      self.config['tokenization']['vocab_size'] = vocab_sizes
-      self.config['tokenization']['tokenizer_name'] = tokenizers      
-      print(self.config)
+      if self.mode == 'pretrain':
+        self.config['tokenization']['vocab_size'] = vocab_sizes
+        self.config['tokenization']['tokenizer_name'] = tokenizers      
     else:
       self.config = configparser.ConfigParser()
       self.config.read(config_path)
@@ -48,8 +55,12 @@ class TrainStrategy:
   def start(self):
     model_names = [m.strip() for m in self.config['model']['model_name'].split(',')]
     dataset_names = [d.strip() for d in self.config['dataset']['dataset_name'].split(',')]
-    tokenizers = [t.strip() for t in self.config['tokenization']['tokenizer_name'].split(',')]
-    vocab_sizes = [v.strip() for v in self.config['tokenization']['vocab_size'].split(',')]
+    if self.mode == 'pretrain':
+      tokenizers = [t.strip() for t in self.config['tokenization']['tokenizer_name'].split(',')]
+      vocab_sizes = [v.strip() for v in self.config['tokenization']['vocab_size'].split(',')]
+    else:
+      tokenizers = [m.strip() for m in self.config['model']['model_name'].split(',')]
+      vocab_sizes = [str(AutoTokenizer.from_pretrained(v.strip()).vocab_size) for v in self.config['model']['model_name'].split(',')]
     runs = int(self.config['train']['runs'])
     max_tokens = int(self.config['tokenization']['max_tokens'])
 
@@ -60,16 +71,20 @@ class TrainStrategy:
       f = open(results_path)
       results = json.load(f)
 
-    for tokenizer_name in tokenizers:
+    for t, tokenizer_name in enumerate(tokenizers):
       if not tokenizer_name in results:
         results[tokenizer_name] = {}
-      for vocab_size in vocab_sizes:
+      for v, vocab_size in enumerate(vocab_sizes):
+        if self.mode == 'finetune' and v != t:
+              continue
         if not vocab_size in results[tokenizer_name]:
           results[tokenizer_name][vocab_size] = {}
-        for dataset_name in dataset_names:
+        for d, dataset_name in enumerate(dataset_names):
           if not dataset_name in results[tokenizer_name][vocab_size]:
             results[tokenizer_name][vocab_size][dataset_name] = {} 
-          for model_name in model_names:
+          for m, model_name in enumerate(model_names):
+            if self.mode == 'finetune' and t != m:
+              continue
             if not model_name in results[tokenizer_name][vocab_size][dataset_name]:
               results[tokenizer_name][vocab_size][dataset_name][model_name] = {} 
             for run in range(runs):
@@ -82,6 +97,16 @@ class TrainStrategy:
                     continue
               
 
+              if '/' in tokenizer_name:
+                new_tokenizer_name = tokenizer_name.split('/')[-1]
+              else:
+                new_tokenizer_name = tokenizer_name
+              
+              if '/' in model_name:
+                new_model_name = model_name.split('/')[-1]
+              else:
+                new_model_name = model_name
+                
               data_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
               tokenizer_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
               train_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/run_{run}"

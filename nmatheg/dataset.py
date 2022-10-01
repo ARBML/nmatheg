@@ -1,4 +1,6 @@
 
+from genericpath import isdir
+from regex import E
 import tnkeeh as tn 
 from datasets import load_dataset, load_from_disk
 try:
@@ -127,8 +129,12 @@ def create_dataset(config, data_config, vocab_size = 300,
         # tokenize data
         if 'birnn' not in model_name:
           tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-          dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
-          dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+          if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+            dataset = dataset.map(lambda examples:tokenizer(examples[data_config['text']], truncation=True, padding='max_length'), batched=True)
+            dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
+            dataset.save_to_disk(data_save_path)
+          else:
+            dataset = load_from_disk(data_save_path)
           columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -151,13 +157,18 @@ def create_dataset(config, data_config, vocab_size = 300,
         # tokenize data
         premise, hypothesis = data_config['text'].split(",")
         if 'birnn' not in model_name:
-          tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
-          def concat(examples):
-            texts = (examples[premise], examples[hypothesis])
-            result = tokenizer(*texts, truncation=True, padding='max_length')
-            return result
-          dataset = dataset.map(concat, batched=True)
-          columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
+            tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=False, model_max_length = 512)
+            def concat(examples):
+                texts = (examples[premise], examples[hypothesis])
+                result = tokenizer(*texts, truncation=True, padding='max_length')
+                return result
+            
+            if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+                dataset = dataset.map(concat, batched=True)
+                dataset.save_to_disk(data_save_path)
+            else:
+                load_dataset(data_save_path)
+            columns=['input_ids', 'token_type_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
             if os.path.isfile(f"{tok_save_path}/tok.model"):
@@ -184,15 +195,19 @@ def create_dataset(config, data_config, vocab_size = 300,
         dataset = aggregate_tokens(dataset, config, data_config)
         if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-            print('aligining the tokens ...')
-            for split in dataset:
-                dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
-                                                    , batched=True, remove_columns=dataset[split].column_names)
+            if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+                print('aligining the tokens ...')
+                for split in dataset:
+                    dataset[split] = dataset[split].map(lambda x: tokenize_and_align_labels(x, tokenizer, data_config, model_type = model_type)
+                                                        , batched=True, remove_columns=dataset[split].column_names)
+                dataset.save_to_disk(data_save_path)
+            else:
+                dataset = load_from_disk(data_save_path)
             columns=['input_ids', 'attention_mask', 'labels']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
-            if os.path.isfile(f"{tok_save_path}/tok.model"):
+            if not os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
@@ -212,9 +227,13 @@ def create_dataset(config, data_config, vocab_size = 300,
     elif task_name == 'qa':
         if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-            for split in dataset:
-                    dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
-                                                , batched=True, remove_columns=dataset[split].column_names)
+            if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+                for split in dataset:
+                        dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
+                                                    , batched=True, remove_columns=dataset[split].column_names)
+                dataset.save_to_disk(data_save_path)
+            else:
+                load_from_disk(data_save_path)
             columns=['input_ids', 'attention_mask', 'start_positions', 'end_positions']
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
@@ -252,7 +271,11 @@ def create_dataset(config, data_config, vocab_size = 300,
 
                 dataset["labels"] = labels["input_ids"]
                 return dataset
-            dataset = dataset.map(preprocess, batched=True)
+            if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+                dataset = dataset.map(preprocess, batched=True)
+                dataset.save_to_disk(data_save_path)
+            else:
+                dataset = load_from_disk(data_save_path)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
             src_tokenizer = get_tokenizer(tokenizer_name, lang = 'en', vocab_size= vocab_size)
