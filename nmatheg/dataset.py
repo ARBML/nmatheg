@@ -178,7 +178,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             else:
                 print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = 'nli')
-                tokenizer.train(file_path = '{data_save_path}/data.txt')
+                tokenizer.train(file_path = f"{data_save_path}/data.txt")
                 tokenizer.save(tok_save_path)
 
                 def concat(example):
