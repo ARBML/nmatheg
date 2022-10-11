@@ -207,7 +207,7 @@ def create_dataset(config, data_config, vocab_size = 300,
         else:
             tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
 
-            if not os.path.isfile(f"{tok_save_path}/tok.model"):
+            if  os.path.isfile(f"{tok_save_path}/tok.model"):
                 print('loading pretrained tokenizer')
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
