@@ -93,9 +93,9 @@ def write_data_for_train(dataset, text, path, task = 'cls'):
     open(f'{path}/data.txt', 'w').write(('\n').join(data))
 
 def get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name):
-    prev_vocab_sizes = [v for v in os.listdir(f"{save_dir}/{tokenizer_name}") if v != str(vocab_size)]
+    prev_vocab_sizes = [int(v) for v in os.listdir(f"{save_dir}/{tokenizer_name}") if int(v) != vocab_size]
 
-    if len(prev_vocab_sizes) > 0:
+    if len(prev_vocab_sizes) == 0:
         return ""
     else:
         return f"{save_dir}/{tokenizer_name}/{max(prev_vocab_sizes)}/{dataset_name}/{model_name}/tokenizer"
