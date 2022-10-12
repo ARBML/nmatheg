@@ -21,7 +21,7 @@ def get_tokenizer(tok_name, vocab_size = 300, lang = 'ar'):
     elif tok_name == "BPE":
       return bpe_surgery.bpe(vocab_size=vocab_size)
     elif tok_name == "MaT-BPE":
-      return bpe_surgery.bpe(vocab_size=vocab_size, morph=True, morph_with_sep=True)
+      return bpe_surgery.bpe(vocab_size=vocab_size, morph=True)
     elif tok_name == "Seg-BPE":
       return bpe_surgery.bpe(vocab_size=vocab_size, seg = True)
     else:
