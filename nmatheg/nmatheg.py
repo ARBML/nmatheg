@@ -24,7 +24,7 @@ import numpy as np
 class TrainStrategy:
   def __init__(self, datasets, models, tokenizers= None, vocab_sizes=None, config_path= None,
                batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 128, max_train_samples = -1,
-               preprocessing = {}, mode = 'finetune'):
+               preprocessing = {}, mode = 'finetune', ckpt= 'ckpts'):
 
     self.mode = mode
     modes = ['finetune', 'pretrain']
@@ -36,7 +36,7 @@ class TrainStrategy:
     if config_path == None:
       self.config = create_default_config(batch_size=batch_size, epochs = epochs, lr = lr, runs = runs,
                                           max_tokens=max_tokens, max_train_samples = max_train_samples, 
-                                          preprocessing = preprocessing)
+                                          preprocessing = preprocessing, ckpt = ckpt)
       self.config['dataset'] = {'dataset_name' : datasets}
       self.config['model'] = {'model_name' : models}
       if self.mode == 'pretrain':
