@@ -92,6 +92,14 @@ def write_data_for_train(dataset, text, path, task = 'cls'):
 
     open(f'{path}/data.txt', 'w').write(('\n').join(data))
 
+def get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name):
+    prev_vocab_sizes = [v for v in os.listdir(f"{save_dir}/{tokenizer_name}") if v != str(vocab_size)]
+
+    if len(prev_vocab_sizes) > 0:
+        return ""
+    else:
+        return f"{save_dir}/{tokenizer_name}/{max(prev_vocab_sizes)}/{dataset_name}/{model_name}/tokenizer"
+
 def create_dataset(config, data_config, vocab_size = 300, 
                    model_name = "birnn", tokenizer_name = "bpe", clean = True):
 
@@ -107,6 +115,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     tok_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
     data_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
 
+    prev_tok_save_path = get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name)
     # clean and load data
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
@@ -144,8 +153,11 @@ def create_dataset(config, data_config, vocab_size = 300,
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
             else:
-                print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path)
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
                 dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples[data_config['text']], out_length= max_tokens)}, batched=True)
@@ -176,8 +188,12 @@ def create_dataset(config, data_config, vocab_size = 300,
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
             else:
-                print('training tokenizer from scratch')
+                
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = 'nli')
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
                 tokenizer.train(file_path = f"{data_save_path}/data.txt")
                 tokenizer.save(tok_save_path)
 
@@ -212,8 +228,11 @@ def create_dataset(config, data_config, vocab_size = 300,
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
             else:
-                print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
                 print('aligining the tokens ...')
@@ -243,8 +262,11 @@ def create_dataset(config, data_config, vocab_size = 300,
                 tokenizer.load(tok_save_path)
                 dataset = load_from_disk(data_save_path)
             else:
-                print('training tokenizer from scratch')
                 write_data_for_train(dataset['train'], data_config['text'], data_save_path, task = task_name)
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
                 tokenizer.train(file_path = f'{data_save_path}/data.txt')
                 tokenizer.save(tok_save_path)
                 for split in dataset:
@@ -278,22 +300,29 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = load_from_disk(data_save_path)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
-            src_tokenizer = get_tokenizer(tokenizer_name, lang = 'en', vocab_size= vocab_size)
-            trg_tokenizer = get_tokenizer(tokenizer_name, lang = 'ar', vocab_size= vocab_size)
+            src_tokenizer = get_tokenizer('bpe', vocab_size= 1000)
+            trg_tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
+            src_tok_save_path = f"{save_dir}/{tokenizer_name}/1000/{dataset_name}/{model_name}/tokenizer"
 
             if os.path.isfile(f"{tok_save_path}/trg_tok.model"):
                 print('loading pretrained tokenizers')
-                src_tokenizer.load(f"{tok_save_path}/", name = "src_tok")
+                src_tokenizer.load(f"{src_tok_save_path}/", name = "src_tok")
                 trg_tokenizer.load(f"{tok_save_path}/", name = "trg_tok")
                 dataset = load_from_disk(f'{tok_save_path}/data/')
             else:
-                print('training tokenizer from scratch')
                 open(f'{data_save_path}/src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
                 open(f'{data_save_path}/trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
 
-                src_tokenizer.train(file_path = f'{data_save_path}/src_data.txt')
+                if not os.path.isfile(f"{src_tok_save_path}/src_tok.model"):
+                    src_tokenizer.train(file_path = f'{data_save_path}/src_data.txt')
+                    src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
+
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
+
                 trg_tokenizer.train(file_path = f'{data_save_path}/trg_data.txt')
-                src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
                 trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
 
                 def preprocess(dataset):
