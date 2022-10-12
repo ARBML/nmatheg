@@ -1,6 +1,6 @@
 import configparser
 def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max_tokens = 64, 
-                          max_train_samples = -1, preprocessing = {}):
+                          max_train_samples = -1, preprocessing = {}, ckpt = 'ckpts'):
     config = configparser.ConfigParser()
 
     config['preprocessing'] = {
@@ -30,7 +30,7 @@ def create_default_config(batch_size = 64, epochs = 5, lr = 5e-5, runs = 10, max
     config['log'] = {'print_every':10}
 
     config['train'] = {
-        'save_dir' : 'ckpts',
+        'save_dir' : ckpt,
         'epochs' : epochs,
         'batch_size' : batch_size,
         'lr': lr, 
