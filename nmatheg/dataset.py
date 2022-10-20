@@ -93,7 +93,7 @@ def write_data_for_train(dataset, text, path, task = 'cls'):
     open(f'{path}/data.txt', 'w').write(('\n').join(data))
 
 def get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name):
-    prev_vocab_sizes = [int(v) for v in os.listdir(f"{save_dir}/{tokenizer_name}") if int(v) != vocab_size]
+    prev_vocab_sizes = [int(v) for v in os.listdir(f"{save_dir}/{tokenizer_name}") if int(v) != vocab_size and dataset_name in os.listdir(f"{save_dir}/{tokenizer_name}/{v}")]
 
     if len(prev_vocab_sizes) == 0:
         return ""
@@ -116,6 +116,7 @@ def create_dataset(config, data_config, vocab_size = 300,
     data_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
 
     prev_tok_save_path = get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name)
+    
     # clean and load data
     # load_dataset_kwargs = config['load_dataset_kwargs']
     # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
