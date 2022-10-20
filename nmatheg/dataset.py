@@ -42,7 +42,7 @@ def split_dataset(dataset, data_config, seed = 42, max_train_samples = -1):
     
     columns = list(dataset.keys())
     for key in columns: 
-        if key not in split_names:
+        if key not in ['train', 'valid', 'test']:
             del dataset[key]
     return dataset 
 
