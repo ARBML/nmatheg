@@ -202,8 +202,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                   example["text"] = example[premise] + ' ' + example[hypothesis]
                   return example
 
-                dataset = dataset.map(concat)
-                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(examples['text'], out_length= max_tokens)}, batched=True)
+                dataset = dataset.map(lambda examples:{'input_ids': tokenizer.encode_sentences(sentences1 = examples[premise], sentences2 = examples[hypothesis], out_length= max_tokens)}, batched=True)
                 dataset = dataset.map(lambda examples:{'labels': examples[data_config['label']]}, batched=True)
                 dataset.save_to_disk(data_save_path)                
             columns=['input_ids', 'labels']
