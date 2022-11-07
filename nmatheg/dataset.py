@@ -312,7 +312,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 print('loading pretrained tokenizers')
                 src_tokenizer.load(f"{src_tok_save_path}/", name = "src_tok")
                 trg_tokenizer.load(f"{tok_save_path}/", name = "trg_tok")
-                dataset = load_from_disk(f'{tok_save_path}/data/')
+                dataset = load_from_disk(data_save_path)
             else:
                 open(f'{data_save_path}/src_data.txt', 'w').write('\n'.join(dataset['train'][src_lang]))
                 open(f'{data_save_path}/trg_data.txt', 'w').write('\n'.join(dataset['train'][trg_lang]))
@@ -342,7 +342,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 for split in dataset: 
                     dataset[split] = preprocess(dataset[split]) 
                 
-                dataset.save_to_disk(f'{tok_save_path}/data/')  
+                dataset.save_to_disk(data_save_path)  
 
             columns = ['input_ids', 'labels']
             tokenizer = trg_tokenizer
