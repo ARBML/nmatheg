@@ -304,7 +304,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset = load_from_disk(data_save_path)
             columns = ['input_ids', 'attention_mask', 'labels']
         else:
-            src_tokenizer = get_tokenizer('bpe', vocab_size= 1000)
+            src_tokenizer = get_tokenizer('BPE', vocab_size= 1000)
             trg_tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
             src_tok_save_path = f"{save_dir}/{tokenizer_name}/1000/{dataset_name}/{model_name}/tokenizer"
 
