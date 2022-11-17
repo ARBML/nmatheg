@@ -252,7 +252,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
                 for split in dataset:
-                        dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type, max_len = max_tokens)
+                        dataset[split] = dataset[split].map(lambda x: prepare_features(x, tokenizer, data_config, model_type = model_type)
                                                     , batched=True, remove_columns=dataset[split].column_names)
                 dataset.save_to_disk(data_save_path)
             else:
