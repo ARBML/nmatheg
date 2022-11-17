@@ -72,11 +72,11 @@ class TrainStrategy:
       results = json.load(f)
 
     if self.mode == "finetune":
-        for d, model_name in enumerate(model_names):
-          if not model_name in results[model_name]:
+        for m, model_name in enumerate(model_names):
+          if not model_name in results:
             results[model_name] = {} 
-          for m, dataset_name in enumerate(dataset_names):
-            if not dataset_name in results[model_name][dataset_name]:
+          for d, dataset_name in enumerate(dataset_names):
+            if not dataset_name in results[model_name]:
               results[model_name][dataset_name] = {} 
             for run in range(runs):
               if os.path.isfile(results_path):
@@ -97,11 +97,15 @@ class TrainStrategy:
               self.data_config = self.datasets_config[dataset_name]
               print(dict(self.data_config))
               task_name = self.data_config['task']
+              vocab_size = vocab_sizes[m]
+              tokenizer_name = tokenizers[m]
               tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
                                                                       vocab_size = int(vocab_size), 
                                                                       model_name = model_name,
                                                                       tokenizer_name = tokenizer_name,
-                                                                      clean = True if len(self.preprocessing) else False)
+                                                                      clean = True if len(self.preprocessing) else False,
+                                                                      tok_save_path = tokenizer_dir,
+                                                                      data_save_path = data_dir)
               self.model_config = {'model_name':model_name,
                                   'vocab_size':int(vocab_size),
                                   'num_labels':int(self.data_config['num_labels']),
@@ -142,8 +146,8 @@ class TrainStrategy:
               
               for metric_name in metrics:
                 if metric_name not in results[model_name][dataset_name]:
-                  results[model_name][dataset_name] = []
-                results[model_name][dataset_name].append(metrics[metric_name])
+                  results[model_name][dataset_name][metric_name] = []
+                results[model_name][dataset_name][metric_name].append(metrics[metric_name])
               self.model.wipe_memory()
               with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
                 json.dump(results, handle)

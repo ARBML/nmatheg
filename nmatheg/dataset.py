@@ -105,25 +105,21 @@ def get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model
         return f"{save_dir}/{tokenizer_name}/{max(prev_vocab_sizes)}/{dataset_name}/{model_name}/tokenizer"
 
 def create_dataset(config, data_config, vocab_size = 300, 
-                   model_name = "birnn", tokenizer_name = "bpe", clean = True):
+                   model_name = "birnn", tokenizer_name = "bpe", clean = True, mode = "finetune",
+                   tok_save_path = None, data_save_path = None):
 
     hf_dataset_name = data_config['name']
     dataset_name = hf_dataset_name.split("/")[-1] #in case we have / in the name
     max_tokens = int(config['tokenization']['max_tokens'])
-    tok_save_path = config['tokenization']['tok_save_path']
     max_train_samples = int(config['tokenization']['max_train_samples'])
+    save_dir = config['train']['save_dir']
+    prev_tok_save_path = ""
+    if mode == "pretrain":
+            prev_tok_save_path = get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name)
 
     batch_size = int(config['train']['batch_size'])
     task_name = data_config['task']
-    save_dir = config['train']['save_dir']
-    tok_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
-    data_save_path = f"{save_dir}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
 
-    prev_tok_save_path = get_prev_tokenizer(save_dir, tokenizer_name, vocab_size, dataset_name, model_name)
-    
-    # clean and load data
-    # load_dataset_kwargs = config['load_dataset_kwargs']
-    # dataset = load_dataset(dataset_name,**load_dataset_kwargs)
     if 'subset' in data_config:
         dataset = load_dataset(hf_dataset_name, data_config['subset'])
     else:
