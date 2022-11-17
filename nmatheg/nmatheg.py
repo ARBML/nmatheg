@@ -94,7 +94,6 @@ class TrainStrategy:
               for path in [data_dir, tokenizer_dir, train_dir]:
                 pathlib.Path(path).mkdir(parents=True, exist_ok=True) 
               
-              
               self.data_config = self.datasets_config[dataset_name]
               print(dict(self.data_config))
               task_name = self.data_config['task']
@@ -148,6 +147,7 @@ class TrainStrategy:
               self.model.wipe_memory()
               with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
                 json.dump(results, handle)
+
     elif self.mode == "pretrain":
       for t, tokenizer_name in enumerate(tokenizers):
         if not tokenizer_name in results:
@@ -196,28 +196,14 @@ class TrainStrategy:
 
                 print(self.model_config)
                 if task_name in ['cls', 'nli']:                  
-                  if 'birnn' in model_name:
-                    self.model = SimpleClassificationModel(self.model_config)
-                  else:
-                    self.model = BERTTextClassificationModel(self.model_config)
+                  self.model = SimpleClassificationModel(self.model_config)
                 elif task_name == 'ner':
-                  if 'birnn' in model_name:
-                    self.model = SimpleTokenClassificationModel(self.model_config)
-                  else:
-                    self.model = BERTTokenClassificationModel(self.model_config)
+                  self.model = SimpleTokenClassificationModel(self.model_config)
 
                 elif task_name == 'qa':
-                  if 'birnn' in model_name:
-                    self.model = SimpleQuestionAnsweringModel(self.model_config)
-                  else:
-                    self.model = BERTQuestionAnsweringModel(self.model_config)
+                  self.model = SimpleQuestionAnsweringModel(self.model_config)
                 elif task_name == 'mt':
-                  if 'birnn' in model_name:
-                    self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
-                  else:
-                    self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
-                
-                
+                  self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
 
                 self.train_config = {'epochs':int(self.config['train']['epochs']),
                                     'save_dir':train_dir,
