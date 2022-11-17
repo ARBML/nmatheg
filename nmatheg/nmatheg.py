@@ -71,45 +71,26 @@ class TrainStrategy:
       f = open(results_path)
       results = json.load(f)
 
-    for t, tokenizer_name in enumerate(tokenizers):
-      if not tokenizer_name in results:
-        results[tokenizer_name] = {}
-      for v, vocab_size in enumerate(vocab_sizes):
-        if self.mode == 'finetune' and v != t:
-              continue
-        if not vocab_size in results[tokenizer_name]:
-          results[tokenizer_name][vocab_size] = {}
-        for d, dataset_name in enumerate(dataset_names):
-          if not dataset_name in results[tokenizer_name][vocab_size]:
-            results[tokenizer_name][vocab_size][dataset_name] = {} 
-          for m, model_name in enumerate(model_names):
-            if self.mode == 'finetune' and t != m:
-              continue
-            if not model_name in results[tokenizer_name][vocab_size][dataset_name]:
-              results[tokenizer_name][vocab_size][dataset_name][model_name] = {} 
+    if self.mode == "finetune":
+        for d, model_name in enumerate(model_names):
+          if not model_name in results[model_name]:
+            results[model_name] = {} 
+          for m, dataset_name in enumerate(dataset_names):
+            if not dataset_name in results[model_name][dataset_name]:
+              results[model_name][dataset_name] = {} 
             for run in range(runs):
               if os.path.isfile(results_path):
-                if len(results[tokenizer_name][vocab_size][dataset_name][model_name].keys()) > 0:
-                  metric_name = list(results[tokenizer_name][vocab_size][dataset_name][model_name].keys())[0]
-                  curr_run = len(results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name])
+                if len(results[model_name][dataset_name].keys()) > 0:
+                  metric_name = list(results[model_name][dataset_name].keys())[0]
+                  curr_run = len(results[model_name][dataset_name][metric_name])
                   if run < curr_run:
                     print(f"Run {run} already finished ")
                     continue
-              
-
-              if '/' in tokenizer_name:
-                new_tokenizer_name = tokenizer_name.split('/')[-1]
-              else:
-                new_tokenizer_name = tokenizer_name
-              
-              if '/' in model_name:
-                new_model_name = model_name.split('/')[-1]
-              else:
-                new_model_name = model_name
                 
-              data_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
-              tokenizer_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
-              train_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/run_{run}"
+              new_model_name = model_name.split("/")[-1]
+              data_dir = f"{self.config['train']['save_dir']}/{new_model_name}/{dataset_name}/data"
+              tokenizer_dir = f"{self.config['train']['save_dir']}/{new_model_name}/{dataset_name}/tokenizer"
+              train_dir = f"{self.config['train']['save_dir']}/{new_model_name}/{dataset_name}/run_{run}"
               for path in [data_dir, tokenizer_dir, train_dir]:
                 pathlib.Path(path).mkdir(parents=True, exist_ok=True) 
               
@@ -129,29 +110,16 @@ class TrainStrategy:
 
               print(self.model_config)
               if task_name in ['cls', 'nli']:                  
-                if 'birnn' in model_name:
-                  self.model = SimpleClassificationModel(self.model_config)
-                else:
                   self.model = BERTTextClassificationModel(self.model_config)
               elif task_name == 'ner':
-                if 'birnn' in model_name:
-                  self.model = SimpleTokenClassificationModel(self.model_config)
-                else:
                   self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
-                if 'birnn' in model_name:
-                  self.model = SimpleQuestionAnsweringModel(self.model_config)
-                else:
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name == 'mt':
-                if 'birnn' in model_name:
-                  self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
-                else:
                   self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
               
               
-
               self.train_config = {'epochs':int(self.config['train']['epochs']),
                                   'save_dir':train_dir,
                                   'batch_size':int(self.config['train']['batch_size']),
@@ -172,13 +140,112 @@ class TrainStrategy:
               save_json(self.data_config, f"{data_dir}/data_config.json")
               save_json(self.model_config, f"{train_dir}/model_config.json")
               save_json(self.tokenizer_config, f"{tokenizer_dir}/tokenizer_config.json")
+              
               for metric_name in metrics:
-                if metric_name not in results[tokenizer_name][vocab_size][dataset_name][model_name]:
-                  results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name] = []
-                results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name].append(metrics[metric_name])
+                if metric_name not in results[model_name][dataset_name]:
+                  results[model_name][dataset_name] = []
+                results[model_name][dataset_name].append(metrics[metric_name])
               self.model.wipe_memory()
               with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
                 json.dump(results, handle)
+    elif self.mode == "pretrain":
+      for t, tokenizer_name in enumerate(tokenizers):
+        if not tokenizer_name in results:
+          results[tokenizer_name] = {}
+        for v, vocab_size in enumerate(vocab_sizes):
+          if self.mode == 'finetune' and v != t:
+                continue
+          if not vocab_size in results[tokenizer_name]:
+            results[tokenizer_name][vocab_size] = {}
+          for d, dataset_name in enumerate(dataset_names):
+            if not dataset_name in results[tokenizer_name][vocab_size]:
+              results[tokenizer_name][vocab_size][dataset_name] = {} 
+            for m, model_name in enumerate(model_names):
+              if self.mode == 'finetune' and t != m:
+                continue
+              if not model_name in results[tokenizer_name][vocab_size][dataset_name]:
+                results[tokenizer_name][vocab_size][dataset_name][model_name] = {} 
+              for run in range(runs):
+                if os.path.isfile(results_path):
+                  if len(results[tokenizer_name][vocab_size][dataset_name][model_name].keys()) > 0:
+                    metric_name = list(results[tokenizer_name][vocab_size][dataset_name][model_name].keys())[0]
+                    curr_run = len(results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name])
+                    if run < curr_run:
+                      print(f"Run {run} already finished ")
+                      continue
+                  
+                data_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/data"
+                tokenizer_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/tokenizer"
+                train_dir = f"{self.config['train']['save_dir']}/{tokenizer_name}/{vocab_size}/{dataset_name}/{model_name}/run_{run}"
+                for path in [data_dir, tokenizer_dir, train_dir]:
+                  pathlib.Path(path).mkdir(parents=True, exist_ok=True) 
+                
+                
+                self.data_config = self.datasets_config[dataset_name]
+                print(dict(self.data_config))
+                task_name = self.data_config['task']
+                tokenizer, self.datasets, self.examples = create_dataset(self.config, self.data_config, 
+                                                                        vocab_size = int(vocab_size), 
+                                                                        model_name = model_name,
+                                                                        tokenizer_name = tokenizer_name,
+                                                                        clean = True if len(self.preprocessing) else False)
+                self.model_config = {'model_name':model_name,
+                                    'vocab_size':int(vocab_size),
+                                    'num_labels':int(self.data_config['num_labels']),
+                                    'labels':self.data_config['labels']}
+
+                print(self.model_config)
+                if task_name in ['cls', 'nli']:                  
+                  if 'birnn' in model_name:
+                    self.model = SimpleClassificationModel(self.model_config)
+                  else:
+                    self.model = BERTTextClassificationModel(self.model_config)
+                elif task_name == 'ner':
+                  if 'birnn' in model_name:
+                    self.model = SimpleTokenClassificationModel(self.model_config)
+                  else:
+                    self.model = BERTTokenClassificationModel(self.model_config)
+
+                elif task_name == 'qa':
+                  if 'birnn' in model_name:
+                    self.model = SimpleQuestionAnsweringModel(self.model_config)
+                  else:
+                    self.model = BERTQuestionAnsweringModel(self.model_config)
+                elif task_name == 'mt':
+                  if 'birnn' in model_name:
+                    self.model = SimpleMachineTranslationModel(self.model_config, tokenizer = tokenizer)
+                  else:
+                    self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
+                
+                
+
+                self.train_config = {'epochs':int(self.config['train']['epochs']),
+                                    'save_dir':train_dir,
+                                    'batch_size':int(self.config['train']['batch_size']),
+                                    'lr':float(self.config['train']['lr']),
+                                    'runs':run}
+                self.tokenizer_config = {'name': tokenizer_name, 'vocab_size': vocab_size, 'max_tokens': max_tokens,
+                                        'save_path': tokenizer_dir}
+                print(self.tokenizer_config)
+                print(self.train_config)
+                os.makedirs(self.train_config['save_dir'], exist_ok = True)
+
+                if task_name == 'mt':
+                  metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+                else:
+                  metrics = self.model.train(self.datasets, self.examples, **self.train_config) 
+
+                save_json(self.train_config, f"{train_dir}/train_config.json")
+                save_json(self.data_config, f"{data_dir}/data_config.json")
+                save_json(self.model_config, f"{train_dir}/model_config.json")
+                save_json(self.tokenizer_config, f"{tokenizer_dir}/tokenizer_config.json")
+                for metric_name in metrics:
+                  if metric_name not in results[tokenizer_name][vocab_size][dataset_name][model_name]:
+                    results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name] = []
+                  results[tokenizer_name][vocab_size][dataset_name][model_name][metric_name].append(metrics[metric_name])
+                self.model.wipe_memory()
+                with open(f"{self.config['train']['save_dir']}/results.json", 'w') as handle:
+                  json.dump(results, handle)
     return results    
 
 def predict_from_run(save_dir, run = 0, sentence = "", question = "", context = "", hypothesis = "", premise = ""):
