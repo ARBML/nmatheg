@@ -459,7 +459,7 @@ class SimpleQuestionAnsweringModel(BaseQuestionAnsweringModel):
         torch.cuda.empty_cache()
 
 
-class BaseMachineTranslationModel:
+class BaseSeq2SeqModel:
     def __init__(self, config, tokenizer = None):
         self.model = nn.Module()
         self.model_name = config['model_name']
@@ -577,9 +577,9 @@ class BaseMachineTranslationModel:
 
 
 
-class T5MachineTranslationModel(BaseMachineTranslationModel):
+class T5Seq2SeqModel(BaseSeq2SeqModel):
     def __init__(self, config, tokenizer = None):
-        BaseMachineTranslationModel.__init__(self, config, tokenizer = tokenizer)
+        BaseSeq2SeqModel.__init__(self, config, tokenizer = tokenizer)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForSeq2SeqLM.from_pretrained(self.model_name, config = config)
     
@@ -739,9 +739,9 @@ class Seq2SeqMachineTranslation(nn.Module):
         return loss
 
 
-class SimpleMachineTranslationModel(BaseMachineTranslationModel):
+class SimpleMachineTranslationModel(BaseSeq2SeqModel):
     def __init__(self, config, tokenizer = None):
-        BaseMachineTranslationModel.__init__(self, config, tokenizer = tokenizer)
+        BaseSeq2SeqModel.__init__(self, config, tokenizer = tokenizer)
         self.model = Seq2SeqMachineTranslation(vocab_size = self.vocab_size, tokenizer = tokenizer)
         self.model.to(self.device)  
         # self.optimizer = AdamW(self.model.parameters(), lr = 5e-5)

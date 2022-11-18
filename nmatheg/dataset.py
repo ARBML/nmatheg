@@ -207,7 +207,7 @@ def create_dataset(config, data_config, vocab_size = 300,
                 dataset.save_to_disk(data_save_path)                
             columns=['input_ids', 'labels']
 
-    elif task_name == 'ner':
+    elif task_name in ['ner', 'pos']:
         dataset = aggregate_tokens(dataset, config, data_config)
         if 'birnn' not in model_name:
             tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -342,7 +342,74 @@ def create_dataset(config, data_config, vocab_size = 300,
 
             columns = ['input_ids', 'labels']
             tokenizer = trg_tokenizer
-            
+    
+    elif task_name == 'sum':
+        prefix = "summarize: "
+        text, summary = data_config['text'].split(",")
+
+        if 'birnn' not in model_name:
+             
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            def preprocess(dataset):
+                inputs = [prefix + ex for ex in dataset[text]]
+                targets = [ex for ex in dataset[summary]]
+                dataset = tokenizer(inputs, max_length=128, truncation=True, padding = 'max_length')
+
+                # Setup the tokenizer for targets
+                with tokenizer.as_target_tokenizer():
+                    labels = tokenizer(targets, max_length=128, truncation=True, padding = 'max_length')
+
+                dataset["labels"] = labels["input_ids"]
+                return dataset
+            if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
+                dataset = dataset.map(preprocess, batched=True)
+                dataset.save_to_disk(data_save_path)
+            else:
+                dataset = load_from_disk(data_save_path)
+            columns = ['input_ids', 'attention_mask', 'labels']
+        else:
+            src_tokenizer = get_tokenizer('BPE', vocab_size= 1000)
+            trg_tokenizer = get_tokenizer(tokenizer_name, vocab_size= vocab_size)
+            src_tok_save_path = f"{save_dir}/{tokenizer_name}/1000/{dataset_name}/{model_name}/tokenizer"
+
+            if os.path.isfile(f"{tok_save_path}/trg_tok.model"):
+                print('loading pretrained tokenizers')
+                src_tokenizer.load(f"{src_tok_save_path}/", name = "src_tok")
+                trg_tokenizer.load(f"{tok_save_path}/", name = "trg_tok")
+                dataset = load_from_disk(data_save_path)
+            else:
+                open(f'{data_save_path}/src_data.txt', 'w').write('\n'.join(dataset['train'][text]))
+                open(f'{data_save_path}/trg_data.txt', 'w').write('\n'.join(dataset['train'][summary]))
+
+                if not os.path.isfile(f"{src_tok_save_path}/src_tok.model"):
+                    src_tokenizer.train(file_path = f'{data_save_path}/src_data.txt')
+                    src_tokenizer.save(f"{tok_save_path}/", name = 'src_tok')
+
+                if prev_tok_save_path != "":
+                    tokenizer.load(prev_tok_save_path)
+                else:
+                    print('training tokenizer from scratch')
+
+                trg_tokenizer.train(file_path = f'{data_save_path}/trg_data.txt')
+                trg_tokenizer.save(f"{tok_save_path}/", name = 'trg_tok')
+
+                def preprocess(dataset):
+                    inputs = [ex for ex in dataset[text]]
+                    targets = [ex for ex in dataset[summary]]
+                    
+                    input_ids = src_tokenizer.encode_sentences(inputs, out_length = max_tokens, add_boundry = True)
+                    labels = trg_tokenizer.encode_sentences(targets, out_length = max_tokens, add_boundry = True)
+                    dataset = dataset.add_column("input_ids", input_ids)
+                    dataset = dataset.add_column("labels", labels)
+                    return dataset
+                
+                for split in dataset: 
+                    dataset[split] = preprocess(dataset[split]) 
+                
+                dataset.save_to_disk(data_save_path)  
+
+            columns = ['input_ids', 'labels']
+            tokenizer = trg_tokenizer        
     #create loaders
     if task_name != 'qa':
         for split in dataset:

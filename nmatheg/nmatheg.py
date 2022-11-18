@@ -4,7 +4,7 @@ from .dataset import create_dataset
 from .models import SimpleClassificationModel, BERTTextClassificationModel\
                     ,BERTTokenClassificationModel,BERTQuestionAnsweringModel\
                     ,SimpleTokenClassificationModel,SimpleQuestionAnsweringModel\
-                    ,SimpleMachineTranslationModel,T5MachineTranslationModel
+                    ,SimpleMachineTranslationModel,T5Seq2SeqModel
 from .configs import create_default_config
 import configparser
 import json 
@@ -114,13 +114,13 @@ class TrainStrategy:
               print(self.model_config)
               if task_name in ['cls', 'nli']:                  
                   self.model = BERTTextClassificationModel(self.model_config)
-              elif task_name == 'ner':
+              elif task_name in ['ner', 'pos']:
                   self.model = BERTTokenClassificationModel(self.model_config)
 
               elif task_name == 'qa':
                   self.model = BERTQuestionAnsweringModel(self.model_config)
-              elif task_name == 'mt':
-                  self.model = T5MachineTranslationModel(self.model_config, tokenizer = tokenizer)
+              elif task_name in ['mt', 'sum']:
+                  self.model = T5Seq2SeqModel(self.model_config, tokenizer = tokenizer)
               
               
               self.train_config = {'epochs':int(self.config['train']['epochs']),
@@ -379,9 +379,10 @@ def predict_from_run(save_dir, run = 0, sentence = "", question = "", context = 
       output = model(input_ids, attention_mask)
       labels = data_config['labels'].split(",")
       return labels[output['logits'].argmax(-1)]
-    elif task_name == "ner":
+      
+    elif task_name in ['ner', 'pos']:
       labels = data_config['labels'].split(",")
-      config = AutoConfig.from_pretrained(model_name, num_labels = 21, id2label = labels)
+      config = AutoConfig.from_pretrained(model_name, num_labels = num_labels, id2label = labels)
       tokenizer = AutoTokenizer.from_pretrained(model_name, model_max_length = 512)
       model = AutoModelForTokenClassification.from_pretrained(train_dir, config = config)
       nlp = pipeline(task_name, model=model, tokenizer=tokenizer)
@@ -394,7 +395,7 @@ def predict_from_run(save_dir, run = 0, sentence = "", question = "", context = 
       nlp = pipeline("question-answering", model=model, tokenizer=tokenizer)
       return nlp(question=question, context=context)
     
-    elif task_name == "mt":
+    elif task_name in ["mt", "sum"]:
       config = AutoConfig.from_pretrained(model_name)
       tokenizer = AutoTokenizer.from_pretrained(model_name, model_max_length = 512)
       model = AutoModelForSeq2SeqLM.from_pretrained(train_dir, config = config)
