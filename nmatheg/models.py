@@ -21,7 +21,8 @@ import copy
 from .ner_utils import get_labels
 from .qa_utils import evaluate_metric
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
-
+import nltk
+nltk.download('punkt')
 
 class BiRNN(nn.Module):
     def __init__(self, vocab_size, num_labels, hidden_dim = 128):
@@ -460,13 +461,14 @@ class SimpleQuestionAnsweringModel(BaseQuestionAnsweringModel):
 
 
 class BaseSeq2SeqModel:
-    def __init__(self, config, tokenizer = None):
+    def __init__(self, config, tokenizer = None, task = ""):
         self.model = nn.Module()
         self.model_name = config['model_name']
         self.vocab_size = config['vocab_size']
         self.num_labels = config['num_labels']
         self.tokenizer = tokenizer 
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.task = task
 
     def train(self, datasets, examples,  **kwargs):
         save_dir = kwargs['save_dir']
@@ -475,11 +477,13 @@ class BaseSeq2SeqModel:
         batch_size = kwargs['batch_size']
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
-        self.metric = load("sacrebleu")
+        self.mt_metric = load("sacrebleu")
+        self.sum_metric = load("rouge")
         train_dataset, valid_dataset, test_dataset = datasets
 
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
+        metric_name = "BLEU" if self.task == "mt" else "ROUGE"
         
         for epoch in range(epochs):
             loss = 0 
@@ -495,13 +499,13 @@ class BaseSeq2SeqModel:
                 loss += loss / len(train_dataset)
                 batch = None
             train_metrics = self.evaluate_dataset(train_dataset)
-            print(f"Epoch {epoch} Train Loss {loss:.4f} Train BLEU {train_metrics['bleu']:.4f}")
+            print(f"Epoch {epoch} Train Loss {loss:.4f} Train {metric_name} {train_metrics[metric_name.lower()]:.4f}")
             
             self.model.eval().to(self.device)
             valid_metrics = self.evaluate_dataset(valid_dataset)
-            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid BLEU {valid_metrics['bleu']:.4f}")
+            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid {metric_name} {valid_metrics[metric_name.lower()]:.4f}")
 
-            val_accuracy = valid_metrics['bleu']
+            val_accuracy = valid_metrics[metric_name.lower()]
             if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
@@ -509,8 +513,8 @@ class BaseSeq2SeqModel:
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
         test_metrics = self.evaluate_dataset(test_dataset)
-        print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test BLEU {test_metrics['bleu']:.4f}")
-        return {'bleu':test_metrics['bleu']}
+        print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test {metric_name} {test_metrics[metric_name.lower()]:.4f}")
+        return {'bleu':test_metrics['bleu'], 'rouge':test_metrics['rouge']}
         
     def evaluate_dataset(self, dataset):
         loss = 0 
@@ -528,9 +532,20 @@ class BaseSeq2SeqModel:
             loss = outputs['loss']
             metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
             bleu_score += metric['bleu'] / len(dataset)
-            loss += loss / len(dataset)
+
+            decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
         
-        return {'loss':loss, 'bleu':bleu_score}
+            decoded_preds, decoded_labels = self.postprocess_text_sum(decoded_preds, decoded_labels)
+            self.sum_metric.add_batch(
+                predictions=decoded_preds,
+                references=decoded_labels,)
+            loss += loss / len(dataset)
+
+        result = self.sum_metric.compute(use_stemmer=True)
+        result = {k: round(v * 100, 4) for k, v in result.items()}
+
+        return {'loss':loss, 'bleu':bleu_score, 'rouge':result['rougeLsum']}
 
     def compute_metrics(self, preds, labels):
         if isinstance(preds, tuple):
@@ -542,7 +557,7 @@ class BaseSeq2SeqModel:
           # Replace -100 in the labels as we can't decode them.
           labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
           decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
-          result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
+          result = self.mt_metric.compute(predictions=decoded_preds, references=decoded_labels)
           result = {"bleu": result["score"]}
           result = {k: round(v, 4) for k, v in result.items()}
           return result
@@ -562,6 +577,16 @@ class BaseSeq2SeqModel:
           result = {k: round(v, 4) for k, v in result.items()}
           return result
     
+    def postprocess_text_sum(self, preds, labels):
+        preds = [pred.strip() for pred in preds]
+        labels = [label.strip() for label in labels]
+
+        # rougeLSum expects newline after each sentence
+        preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
+        labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
+
+        return preds, labels
+    
     def get_lists(self, inputs):
         inputs = inputs.cpu().detach().numpy().astype(int).tolist()
         output = []
@@ -578,8 +603,8 @@ class BaseSeq2SeqModel:
 
 
 class T5Seq2SeqModel(BaseSeq2SeqModel):
-    def __init__(self, config, tokenizer = None):
-        BaseSeq2SeqModel.__init__(self, config, tokenizer = tokenizer)
+    def __init__(self, config, tokenizer = None, task = ""):
+        BaseSeq2SeqModel.__init__(self, config, tokenizer = tokenizer, task = task)
         config = AutoConfig.from_pretrained(self.model_name)
         self.model =  AutoModelForSeq2SeqLM.from_pretrained(self.model_name, config = config)
     

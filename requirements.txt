@@ -6,6 +6,7 @@ transformers[sentencepiece]
 accelerate
 seqeval
 sacrebleu
+rouge_score
 evaluate
 pandas
 fsspec==2021.10

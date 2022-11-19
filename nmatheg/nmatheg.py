@@ -120,7 +120,7 @@ class TrainStrategy:
               elif task_name == 'qa':
                   self.model = BERTQuestionAnsweringModel(self.model_config)
               elif task_name in ['mt', 'sum']:
-                  self.model = T5Seq2SeqModel(self.model_config, tokenizer = tokenizer)
+                  self.model = T5Seq2SeqModel(self.model_config, tokenizer = tokenizer, task = task_name)
               
               
               self.train_config = {'epochs':int(self.config['train']['epochs']),
