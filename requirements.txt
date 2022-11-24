@@ -6,7 +6,7 @@ transformers[sentencepiece]
 accelerate
 seqeval
 sacrebleu
-rouge_score
+git+https://github.com/ARBML/rouge_score_ar
 evaluate
 pandas
 fsspec==2021.10
