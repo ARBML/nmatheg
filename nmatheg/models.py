@@ -483,7 +483,7 @@ class BaseSeq2SeqModel:
 
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
-        metric_name = "BLEU" if self.task == "mt" else "ROUGE"
+        metric_name = "bleu" if self.task == "mt" else "rougeLsum"
         
         for epoch in range(epochs):
             loss = 0 
@@ -495,57 +495,65 @@ class BaseSeq2SeqModel:
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-
-                loss += loss / len(train_dataset)
                 batch = None
-            train_metrics = self.evaluate_dataset(train_dataset)
-            print(f"Epoch {epoch} Train Loss {loss:.4f} Train {metric_name} {train_metrics[metric_name.lower()]:.4f}")
-            
             self.model.eval().to(self.device)
-            valid_metrics = self.evaluate_dataset(valid_dataset)
-            print(f"Epoch {epoch} Valid Loss {valid_metrics['loss']:.4f} Valid {metric_name} {valid_metrics[metric_name.lower()]:.4f}")
+            train_loss, train_metrics = self.evaluate_dataset(train_dataset)
+            print(f"Epoch {epoch} Train Loss {train_loss:.4f} Train {metric_name} {train_metrics[metric_name]:.4f}")
+            
+            valid_loss, valid_metrics = self.evaluate_dataset(valid_dataset)
+            print(f"Epoch {epoch} Valid Loss {valid_loss:.4f} Valid {metric_name} {valid_metrics[metric_name]:.4f}")
 
-            val_accuracy = valid_metrics[metric_name.lower()]
+            val_accuracy = valid_metrics[metric_name]
             if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 torch.save(self.model.state_dict(), filepath)
         
         self.model.load_state_dict(torch.load(filepath))
         self.model.eval()
-        test_metrics = self.evaluate_dataset(test_dataset)
-        print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test {metric_name} {test_metrics[metric_name.lower()]:.4f}")
-        return {'bleu':test_metrics['bleu'], 'rouge':test_metrics['rouge']}
-        
+        test_loss, test_metrics = self.evaluate_dataset(test_dataset)
+        print(f"Epoch {epoch} Test Loss {test_loss:.4f} Test {metric_name} {test_metrics[metric_name]:.4f}")
+        return test_metrics
     def evaluate_dataset(self, dataset):
-        loss = 0 
+        total_loss = 0 
         bleu_score = 0
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             if 'T5' in self.model_name:
-              outputs = self.model(**batch)
-              generated_tokens = self.model.generate(batch['input_ids'])
+              with torch.no_grad():
+                outputs = self.model(**batch)
+                generated_tokens = self.model.generate(batch['input_ids'])
             else:
-              outputs = self.model(**batch, mode ="generate")
-              generated_tokens = outputs['outputs']
+              with torch.no_grad():
+                outputs = self.model(**batch, mode ="generate")
+                generated_tokens = outputs['outputs']
                             
             labels = batch['labels']
-            loss = outputs['loss']
-            metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
-            bleu_score += metric['bleu'] / len(dataset)
+            loss = outputs['loss'] 
+            total_loss += loss.cpu().numpy() / len(dataset)
+            
+            if self.task == "mt":
+                metric = self.compute_metrics(generated_tokens.cpu(), labels.cpu())
+                bleu_score += metric['bleu'] / len(dataset)
 
-            decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+            elif self.task == "sum":
+                labels = labels.cpu().numpy()
+                labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+            
+                decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+                decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
         
-            decoded_preds, decoded_labels = self.postprocess_text_sum(decoded_preds, decoded_labels)
-            self.sum_metric.add_batch(
-                predictions=decoded_preds,
-                references=decoded_labels,)
-            loss += loss / len(dataset)
+                decoded_preds, decoded_labels = self.postprocess_text_sum(decoded_preds, decoded_labels)
+                self.sum_metric.add_batch(
+                    predictions=decoded_preds,
+                    references=decoded_labels,)
 
-        result = self.sum_metric.compute(use_stemmer=True)
-        result = {k: round(v * 100, 4) for k, v in result.items()}
+        if self.task == "sum":
+            result = self.sum_metric.compute(use_stemmer=True)
+            result = {k: round(v * 100, 4) for k, v in result.items()}
+            return loss, result
 
-        return {'loss':loss, 'bleu':bleu_score, 'rouge':result['rougeLsum']}
+        elif self.task == "mt":
+            return loss, {'bleu':bleu_score}
 
     def compute_metrics(self, preds, labels):
         if isinstance(preds, tuple):

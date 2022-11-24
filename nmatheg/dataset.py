@@ -344,7 +344,7 @@ def create_dataset(config, data_config, vocab_size = 300,
             tokenizer = trg_tokenizer
     
     elif task_name == 'sum':
-        prefix = "summarize: "
+        prefix = ""
         text, summary = data_config['text'].split(",")
 
         if 'birnn' not in model_name:
@@ -358,7 +358,8 @@ def create_dataset(config, data_config, vocab_size = 300,
                 # Setup the tokenizer for targets
                 with tokenizer.as_target_tokenizer():
                     labels = tokenizer(targets, max_length=128, truncation=True, padding = 'max_length')
-
+                labels["input_ids"] = [
+                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]]
                 dataset["labels"] = labels["input_ids"]
                 return dataset
             if not os.path.isfile(f"{data_save_path}/dataset_dict.json"):
