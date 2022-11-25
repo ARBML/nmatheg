@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import os
 import time
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.optim import AdamW
 import torch.nn as nn
@@ -74,7 +74,8 @@ class BaseTextClassficationModel:
 
         self.optimizer = AdamW(self.model.parameters(), lr = lr)
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
-        best_accuracy = 0 
+        best_accuracy = 0
+        pbar = tqdm(total=epochs * len(train_dataset), leave=True) 
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
@@ -90,7 +91,8 @@ class BaseTextClassficationModel:
                 preds = outputs['logits'].argmax(-1).cpu() 
                 accuracy += accuracy_score(labels, preds) /len(train_dataset)
                 loss += loss / len(train_dataset)
-                batch = None 
+                batch = None
+                pbar.update(1) 
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train Accuracy {accuracy:.4f}")
             
             self.model.eval().to(self.device)
@@ -110,9 +112,10 @@ class BaseTextClassficationModel:
         print(f"Test Loss {test_metrics['loss']:.4f} Test Accuracy {test_metrics['accuracy']:.4f}")
         return {'accuracy':test_metrics['accuracy']} 
     
-    def evaluate_dataset(self, dataset):
+    def evaluate_dataset(self, dataset, desc = "Eval"):
         accuracy = 0
-        total_loss = 0 
+        total_loss = 0
+        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc) 
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
@@ -121,7 +124,8 @@ class BaseTextClassficationModel:
             preds = outputs['logits'].argmax(-1).cpu() 
             accuracy += accuracy_score(labels, preds) /len(dataset)
             total_loss += loss / len(dataset)
-            batch = None 
+            batch = None
+            pbar.update(1) 
         return {'loss':float(total_loss.cpu().detach().numpy()), 'accuracy':accuracy}
 
 class SimpleClassificationModel(BaseTextClassficationModel):
@@ -200,7 +204,8 @@ class BaseTokenClassficationModel:
 
         train_dataset, valid_dataset, test_dataset = datasets 
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
-        best_accuracy = 0 
+        best_accuracy = 0
+        pbar = tqdm(total=epochs * len(train_dataset), leave=True) 
         for epoch in range(epochs):
             accuracy = 0 
             loss = 0 
@@ -215,7 +220,8 @@ class BaseTokenClassficationModel:
                 self.optimizer.zero_grad()
                 loss += loss / len(train_dataset)
                 batch = None
-
+                pbar.update(1)
+                
             train_metrics = self.evaluate_dataset(train_dataset) 
             print(f"Epoch {epoch} Train Loss {train_metrics['loss']:.4f} Train F1 {train_metrics['f1']:.4f}")
             
@@ -239,11 +245,12 @@ class BaseTokenClassficationModel:
                     "accuracy": test_metrics["accuracy"],
                 }
         
-    def evaluate_dataset(self, dataset):
+    def evaluate_dataset(self, dataset, desc = "Eval"):
         preds = []
         refs = []
 
-        total_loss = 0 
+        total_loss = 0
+        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc) 
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
@@ -261,6 +268,7 @@ class BaseTokenClassficationModel:
 
             total_loss += loss / len(dataset)
             batch = None
+            pbar.update(1)
 
         refs = [item for sublist in refs for item in sublist]
         preds = [item for sublist in preds for item in sublist]
@@ -324,6 +332,7 @@ class BaseQuestionAnsweringModel:
         train_loader = torch.utils.data.DataLoader(train_loader, batch_size=batch_size, shuffle = True)
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
+        pbar = tqdm(total=epochs * len(train_dataset), leave=True)
 
         for epoch in range(epochs):
             accuracy = 0 
@@ -349,6 +358,8 @@ class BaseQuestionAnsweringModel:
 
                 loss += loss / len(train_dataset)
                 batch = None
+                pbar.update(1)
+
             train_metrics = self.evaluate_dataset(train_dataset, train_examples, batch_size=batch_size)
             print(f"Epoch {epoch} Train Loss {loss:.4f} Train F1 {train_metrics['f1']:.4f}")
             
@@ -367,13 +378,14 @@ class BaseQuestionAnsweringModel:
         print(f"Epoch {epoch} Test Loss {test_metrics['loss']:.4f} Test F1 {test_metrics['f1']:.4f}")
         return {'f1':test_metrics['f1'], 'Exact Match':test_metrics['exact_match']}
         
-    def evaluate_dataset(self, dataset, examples, batch_size = 8):
+    def evaluate_dataset(self, dataset, examples, batch_size = 8, desc = "Eval"):
         total_loss = 0 
         all_start_logits = []
         all_end_logits = []
         data_loader = copy.deepcopy(dataset)
         data_loader.set_format(type='torch', columns=self.columns)
         data_loader = torch.utils.data.DataLoader(data_loader, batch_size=batch_size)
+        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc)
         for _, batch in enumerate(data_loader):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             val = batch['input_ids']
@@ -388,6 +400,7 @@ class BaseQuestionAnsweringModel:
             
             total_loss += loss / len(dataset)
             batch = None
+            pbar.update(1)
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
         return {'loss':total_loss, 'f1':metric['f1']/100, 'exact_match':metric['exact_match']/100}
 
@@ -484,7 +497,8 @@ class BaseSeq2SeqModel:
         filepath = os.path.join(save_dir, 'pytorch_model.bin')
         best_accuracy = 0 
         metric_name = "bleu" if self.task == "mt" else "rougeLsum"
-        
+        pbar = tqdm(total=epochs * len(train_dataset), leave=True)
+
         for epoch in range(epochs):
             loss = 0 
             self.model.train().to(self.device)
@@ -496,6 +510,7 @@ class BaseSeq2SeqModel:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 batch = None
+                pbar.update(1)
             self.model.eval().to(self.device)
             train_loss, train_metrics = self.evaluate_dataset(train_dataset)
             print(f"Epoch {epoch} Train Loss {train_loss:.4f} Train {metric_name} {train_metrics[metric_name]:.4f}")
@@ -513,9 +528,11 @@ class BaseSeq2SeqModel:
         test_loss, test_metrics = self.evaluate_dataset(test_dataset)
         print(f"Epoch {epoch} Test Loss {test_loss:.4f} Test {metric_name} {test_metrics[metric_name]:.4f}")
         return test_metrics
-    def evaluate_dataset(self, dataset):
+
+    def evaluate_dataset(self, dataset, desc="Eval"):
         total_loss = 0 
         bleu_score = 0
+        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc)
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             if 't5' in self.model_name.lower():
@@ -547,6 +564,7 @@ class BaseSeq2SeqModel:
                     predictions=decoded_preds,
                     references=decoded_labels,)
 
+            pbar.update(1)
         if self.task == "sum":
             result = self.sum_metric.compute(use_stemmer=True)
             result = {k: round(v * 100, 4) for k, v in result.items()}
