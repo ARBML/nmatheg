@@ -518,7 +518,7 @@ class BaseSeq2SeqModel:
         bleu_score = 0
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
-            if 'T5' in self.model_name:
+            if 't5' in self.model_name.lower():
               with torch.no_grad():
                 outputs = self.model(**batch)
                 generated_tokens = self.model.generate(batch['input_ids'])
@@ -559,7 +559,7 @@ class BaseSeq2SeqModel:
         if isinstance(preds, tuple):
             preds = preds[0]
         
-        if 'T5' in self.model_name:
+        if 't5' in self.model_name.lower():
           decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
 
           # Replace -100 in the labels as we can't decode them.
