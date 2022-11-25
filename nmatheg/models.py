@@ -112,7 +112,7 @@ class BaseTextClassficationModel:
     
     def evaluate_dataset(self, dataset):
         accuracy = 0
-        loss = 0 
+        total_loss = 0 
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
@@ -120,9 +120,9 @@ class BaseTextClassficationModel:
             labels = batch['labels'].cpu() 
             preds = outputs['logits'].argmax(-1).cpu() 
             accuracy += accuracy_score(labels, preds) /len(dataset)
-            loss += loss / len(dataset)
+            total_loss += loss / len(dataset)
             batch = None 
-        return {'loss':float(loss.cpu().detach().numpy()), 'accuracy':accuracy}
+        return {'loss':float(total_loss.cpu().detach().numpy()), 'accuracy':accuracy}
 
 class SimpleClassificationModel(BaseTextClassficationModel):
     def __init__(self, config):
@@ -243,7 +243,7 @@ class BaseTokenClassficationModel:
         preds = []
         refs = []
 
-        loss = 0 
+        total_loss = 0 
         for _, batch in enumerate(dataset):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             outputs = self.model(**batch)
@@ -259,14 +259,14 @@ class BaseTokenClassficationModel:
             preds.append(pred)
             refs.append(ref)
 
-            loss += loss / len(dataset)
+            total_loss += loss / len(dataset)
             batch = None
 
         refs = [item for sublist in refs for item in sublist]
         preds = [item for sublist in preds for item in sublist]
 
         return {
-                    "loss":float(loss.cpu().detach().numpy()),
+                    "loss":float(total_loss.cpu().detach().numpy()),
                     "precision": precision_score(refs, preds, average = "micro"),
                     "recall": recall_score(refs, preds, average = "micro"),
                     "f1": f1_score(refs, preds, average = "micro"),
@@ -368,7 +368,7 @@ class BaseQuestionAnsweringModel:
         return {'f1':test_metrics['f1'], 'Exact Match':test_metrics['exact_match']}
         
     def evaluate_dataset(self, dataset, examples, batch_size = 8):
-        loss = 0 
+        total_loss = 0 
         all_start_logits = []
         all_end_logits = []
         data_loader = copy.deepcopy(dataset)
@@ -386,10 +386,10 @@ class BaseQuestionAnsweringModel:
             all_start_logits.append(self.accelerator.gather(start_logits).detach().cpu().numpy())
             all_end_logits.append(self.accelerator.gather(end_logits).detach().cpu().numpy())
             
-            loss += loss / len(dataset)
+            total_loss += loss / len(dataset)
             batch = None
         metric = evaluate_metric(dataset, examples, all_start_logits, all_end_logits)
-        return {'loss':loss, 'f1':metric['f1']/100, 'exact_match':metric['exact_match']/100}
+        return {'loss':total_loss, 'f1':metric['f1']/100, 'exact_match':metric['exact_match']/100}
 
 class BERTQuestionAnsweringModel(BaseQuestionAnsweringModel):
     def __init__(self, config):
