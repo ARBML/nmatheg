@@ -110,23 +110,31 @@ class BaseTextClassficationModel:
         self.model.eval()
         test_metrics = self.evaluate_dataset(test_dataset)
         print(f"Test Loss {test_metrics['loss']:.4f} Test Accuracy {test_metrics['accuracy']:.4f}")
-        return {'accuracy':test_metrics['accuracy']} 
+        return test_metrics
     
     def evaluate_dataset(self, dataset, desc = "Eval"):
         accuracy = 0
         total_loss = 0
-        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc) 
-        for _, batch in enumerate(dataset):
-            batch = {k: v.to(self.device) for k, v in batch.items()}
-            outputs = self.model(**batch)
-            loss = outputs['loss']
-            labels = batch['labels'].cpu() 
-            preds = outputs['logits'].argmax(-1).cpu() 
-            accuracy += accuracy_score(labels, preds) /len(dataset)
-            total_loss += loss / len(dataset)
-            batch = None
-            pbar.update(1) 
-        return {'loss':float(total_loss.cpu().detach().numpy()), 'accuracy':accuracy}
+        pbar = tqdm(total=len(dataset), position=0, leave=False, desc=desc)
+        refs = []
+        preds = []
+        with torch.no_grad(): 
+          for _, batch in enumerate(dataset):
+              batch = {k: v.to(self.device) for k, v in batch.items()}
+              outputs = self.model(**batch)
+              loss = outputs['loss']
+              refs += batch['labels'].cpu() 
+              preds += outputs['logits'].argmax(-1).cpu() 
+              total_loss += loss / len(dataset)
+              batch = None
+              pbar.update(1) 
+          return {
+                    "loss":float(total_loss.cpu().detach().numpy()),
+                    "precision": precision_score(refs, preds, average = "micro"),
+                    "recall": recall_score(refs, preds, average = "micro"),
+                    "f1": f1_score(refs, preds, average = "micro"),
+                    "accuracy": accuracy_score(refs, preds),
+                }
 
 class SimpleClassificationModel(BaseTextClassficationModel):
     def __init__(self, config):
