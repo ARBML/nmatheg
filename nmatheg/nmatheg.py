@@ -192,6 +192,8 @@ class TrainStrategy:
                                                                         vocab_size = int(vocab_size), 
                                                                         model_name = model_name,
                                                                         tokenizer_name = tokenizer_name,
+                                                                        data_save_path = data_dir,
+                                                                        tok_save_path = tokenizer_dir,
                                                                         clean = True if len(self.preprocessing) else False)
                 self.model_config = {'model_name':model_name,
                                     'vocab_size':int(vocab_size),
@@ -268,12 +270,12 @@ def predict_from_run(save_dir, run = 0, sentence = "", question = "", context = 
 
     elif task_name == "cls":
       tokenizer = get_tokenizer(tokenizer_name, vocab_size = vocab_size)
-      tokenizer.load(tokenizer_save_path)
+      tokenizer.load_model(f"{tokenizer_save_path}/m.model")
 
       model = SimpleClassificationModel(model_config)
       model.model.load_state_dict(torch.load(f"{train_dir}/pytorch_model.bin"))
 
-      encoding = tokenizer.encode_sentences([sentence], add_boundry=True, out_length=max_tokens)
+      encoding = tokenizer.encode_sentences([sentence], out_length=max_tokens)
       out = model.model(torch.tensor(encoding).to('cuda'))
       labels = data_config['labels'].split(",")
       return labels[out['logits'].argmax(-1)]
